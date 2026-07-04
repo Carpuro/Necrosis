@@ -1,19 +1,24 @@
 using System.Collections.Generic;
+using Unity.AI.Navigation;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.AI;
 
 /// <summary>
 /// NECROSIS://PROTOCOLO — Constructor de la escena greybox de fase 0.
 /// Automatiza los pasos manuales de README_FASE0.md para que la escena sea
 /// reproducible desde cero (menú: Necrosis > Construir escena Fase 0).
 ///
-/// Hito actual: POV + movimiento (jugador, cámara al hombro, ciclo día/noche).
-/// Los Cazadores y el NavMesh se añaden en el siguiente hito.
+/// Contenido: jugador + cámara al hombro + ciclo día/noche + NavMesh horneado
+/// + 4 Cazadores + clip de estática para el Coro. Fase 0 completa.
 /// </summary>
 public static class Fase0SceneBuilder
 {
     const string ScenePath = "Assets/_Necrosis/Scenes/Fase0.unity";
+    const string NavMeshPath = "Assets/_Necrosis/Scenes/Fase0_NavMesh.asset";
+    const string HunterMatPath = "Assets/_Necrosis/Materials/Hunter_Red.mat";
+    const string StaticClipPath = "Assets/_Necrosis/Audio/static_noise.wav";
 
     [MenuItem("Necrosis/Construir escena Fase 0")]
     public static void BuildScene()
@@ -57,6 +62,12 @@ public static class Fase0SceneBuilder
             cube.isStatic = true;
         }
 
+        // --- NavMesh: hornear ANTES de crear cápsulas (el bake usa render meshes;
+        //     si jugador/Cazadores ya existieran, dejarían agujeros en el mesh) ---
+        var surface = ground.AddComponent<NavMeshSurface>();
+        surface.BuildNavMesh();
+        AssetDatabase.CreateAsset(surface.navMeshData, NavMeshPath);
+
         // --- Ciclo día/noche ---
         var sun = GameObject.Find("Directional Light").GetComponent<Light>();
         sun.shadows = LightShadows.Soft;
@@ -82,7 +93,10 @@ public static class Fase0SceneBuilder
 
         var audio = player.AddComponent<AudioSource>();
         audio.loop = true;
-        audio.playOnAwake = true; // el clip de estática se asigna a mano (freesound.org)
+        audio.playOnAwake = true;
+        // Clip de estática placeholder (ruido blanco generado); sustituir por uno
+        // con más carácter (freesound.org) cuando toque pulir audio
+        audio.clip = AssetDatabase.LoadAssetAtPath<AudioClip>(StaticClipPath);
         player.AddComponent<ChorusAudio>();
         player.AddComponent<DebugHUD>();
 
@@ -108,6 +122,33 @@ public static class Fase0SceneBuilder
         var shoulder = cam.AddComponent<ShoulderCamera>();
         shoulder.target = pivot.transform;
         movement.cameraTransform = cam.transform;
+
+        // --- Cazadores: 4 cápsulas rojas repartidas, deambulan (sin puntos de patrulla) ---
+        var hunterMat = AssetDatabase.LoadAssetAtPath<Material>(HunterMatPath);
+        if (hunterMat == null)
+        {
+            hunterMat = new Material(Shader.Find("Standard")) { color = new Color(0.7f, 0.08f, 0.08f) };
+            AssetDatabase.CreateAsset(hunterMat, HunterMatPath);
+        }
+        var hunters = new GameObject("Hunters");
+        var spawnPoints = new[]
+        {
+            new Vector3( 15f, 1.1f,  15f),
+            new Vector3(-14f, 1.1f, -14f),
+            new Vector3(  2f, 1.1f,  22f),
+            new Vector3(-20f, 1.1f,   8f),
+        };
+        foreach (var pos in spawnPoints)
+        {
+            var hunter = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            hunter.name = "Hunter";
+            hunter.transform.SetParent(hunters.transform);
+            hunter.transform.position = pos;
+            hunter.GetComponent<MeshRenderer>().sharedMaterial = hunterMat;
+            hunter.AddComponent<NavMeshAgent>();
+            var ai = hunter.AddComponent<HunterAI>();
+            ai.obstacleMask = 1 << 0; // capa Default: los muros bloquean su visión
+        }
 
         // --- Guardar y registrar en Build Settings (PlayerHealth recarga por buildIndex) ---
         EditorSceneManager.SaveScene(scene, ScenePath);
