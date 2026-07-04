@@ -18,14 +18,40 @@ prueba en `README_FASE0.md`.
 
 ## Estado del proyecto
 
-**FASE 0 (greybox).** Proyecto de Unity completo y versionado (ProjectSettings/,
-Packages/, .meta). Editor instalado en esta máquina: **Unity 6000.5.2f1**.
-Input Manager clásico (`Input.GetAxis`/`GetKey`); render pipeline built-in por ahora.
-La escena `Assets/_Necrosis/Scenes/Fase0.unity` se genera con
+**FASE 0 (greybox) — ESCENA COMPLETA.** Proyecto de Unity completo y versionado
+(ProjectSettings/, Packages/, .meta). Editor instalado: **Unity 6000.5.2f1**.
+Input Manager clásico (`Input.GetAxis`/`GetKey`); render pipeline **built-in** (no URP).
+
+La escena `Assets/_Necrosis/Scenes/Fase0.unity` se genera COMPLETA con
 `Fase0SceneBuilder` (menú *Necrosis > Construir escena Fase 0*, o batchmode con
-`-executeMethod Fase0SceneBuilder.BuildScene`) — editar el builder, no la escena a mano.
-Hito actual: POV + movimiento. Pendiente del builder: Cazadores + NavMesh
-(paquete **AI Navigation**, aún no instalado) y clip de estática para el Coro.
+`-executeMethod Fase0SceneBuilder.BuildScene`) — **editar el builder, nunca la
+escena a mano**. Contiene: suelo 100×100 + 12 bloques greybox, jugador (cápsula
+con los 5 componentes + linterna + CameraPivot), cámara al hombro, ciclo día/noche,
+NavMesh horneado (`Fase0_NavMesh.asset`, paquete AI Navigation 2.0.13 — viene
+bundled con el editor, instala offline), 4 Cazadores rojos (deambulan, sin puntos
+de patrulla, `obstacleMask` = Default) y clip de estática placeholder
+(`Audio/static_noise.wav`, ruido blanco generado) conectado al Coro.
+
+### Hecho (2026-07-04)
+- Revisión de los 8 scripts: sin errores de compilación; 7 bugs lógicos corregidos
+  (fase inicial en Awake, congelar en Dusk al arrancar, jitter del flanqueo,
+  guardas pathPending, centro del crouch, volumen/pitch inicial del Coro,
+  auto-colisión de la cámara). Detalle en el historial de git (commit 8a9aff3).
+- Proyecto Unity generado por batchmode; escena fase 0 completa (commit 6dbefc0).
+- Todo pusheado a github.com/Carpuro/necrosis (rama main).
+
+### Pendiente
+1. **Carlos prueba la escena en el editor** (Play en Fase0.unity): validar que
+   patrulla/flanqueo de día, congelación a las 19:00, frenesí nocturno y Marea
+   del Alba se SIENTEN. Tunear valores en el Inspector, no en código.
+2. Borrar la carpeta vacía `Necrosis/` de la raíz (proyecto duplicado de Unity Hub,
+   ya vaciado y gitignoreado; el directorio quedó bloqueado por Unity Hub —
+   quitarlo de la lista de proyectos del Hub o borrar tras reiniciar).
+   El proyecto REAL se abre desde la raíz del repo.
+3. Commitear `ProjectSettings/PackageManagerSettings.asset` (lo generó el editor).
+4. Sustituir el clip de estática por uno con carácter (freesound.org) al pulir audio.
+5. **Siguiente hito aprobado: melé del jugador (fase 0.5)** — empezar cuando
+   Carlos lo pida.
 
 ## Estructura
 
