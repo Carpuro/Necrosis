@@ -45,6 +45,16 @@ public class PlayerController : MonoBehaviour
     /// <summary>True mientras se apunta/strafea (clic derecho mantenido).</summary>
     public bool Aiming { get; private set; }
 
+    /// <summary>True mientras se strafea libre (sin apuntar): Left Alt mantenido.</summary>
+    public bool StrafeLock { get; private set; }
+
+    [Header("Esquiva (rodar)")]
+    public float rollSpeed = 7f;
+    public float rollDuration = 0.7f;
+    bool rolling;
+    float rollTimer;
+    Vector3 rollDir;
+
     // Postura de combate seleccionada (1 puños, 2 melé, 3 arma). Decide qué set
     // de animaciones de strafe usa el modo apuntar.
     public enum Stance { Fists, Melee, Gun }
@@ -93,12 +103,37 @@ public class PlayerController : MonoBehaviour
         Vector3 inputDir = new Vector3(h, 0f, v).normalized;
         bool moving = inputDir.sqrMagnitude > 0.01f;
 
+        // --- Esquiva (rodar): Espacio. Rueda en la dirección de input (o de frente).
+        //     Es un override: durante la rodada el movimiento y la anim los manda esto. ---
+        if (rolling) { UpdateRoll(); return; }
+        if (Input.GetKeyDown(KeyCode.Space) && controller.isGrounded)
+        {
+            rolling = true; rollTimer = 0f;
+            Vector3 wish = Vector3.zero;
+            if (cameraTransform != null)
+            {
+                Vector3 cF = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
+                Vector3 cR = Vector3.ProjectOnPlane(cameraTransform.right, Vector3.up).normalized;
+                wish = (cF * v + cR * h).normalized;
+            }
+            rollDir = wish.sqrMagnitude > 0.01f
+                ? wish
+                : Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
+            transform.rotation = Quaternion.LookRotation(rollDir, Vector3.up);
+            if (animator != null) animator.SetTrigger("Roll");
+            UpdateRoll();
+            return;
+        }
+
         // Apuntar/strafear: clic derecho mantenido (estilo State of Decay).
         Aiming = Input.GetMouseButton(1) && cameraTransform != null;
-        bool crouched = crouchToggled && !Aiming; // al apuntar se está de pie
+        // Strafe libre (sin apuntar): Left Alt mantenido.
+        StrafeLock = Input.GetKey(KeyCode.LeftAlt) && !Aiming && cameraTransform != null;
+        bool faceCamera = Aiming || StrafeLock;
+        bool crouched = crouchToggled && !faceCamera; // al apuntar/strafear se está de pie
 
-        // --- Estado de movimiento (prioridad: apuntar > agachado > esprint > correr > caminar) ---
-        if (Aiming) CurrentState = moving ? MoveState.Walk : MoveState.Idle;
+        // --- Estado de movimiento (prioridad: apuntar/strafe > agachado > esprint > correr > caminar) ---
+        if (faceCamera) CurrentState = moving ? MoveState.Walk : MoveState.Idle;
         else if (crouched) CurrentState = MoveState.Crouch;
         else if (!moving) CurrentState = MoveState.Idle;
         else if (sprintHeld) CurrentState = MoveState.Sprint;
@@ -120,10 +155,10 @@ public class PlayerController : MonoBehaviour
             Vector3 camForward = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
             Vector3 camRight = Vector3.ProjectOnPlane(cameraTransform.right, Vector3.up).normalized;
 
-            if (Aiming)
+            if (faceCamera)
             {
-                // El cuerpo mira SIEMPRE hacia donde apunta la cámara; el movimiento
-                // es lateral/atrás respecto a ese eje (strafe). WASD = ejes del cuerpo.
+                // Apuntar o strafe libre: el cuerpo mira SIEMPRE hacia la cámara y
+                // el movimiento es lateral/atrás respecto a ese eje. WASD = ejes del cuerpo.
                 Quaternion look = Quaternion.LookRotation(camForward, Vector3.up);
                 transform.rotation = Quaternion.Slerp(transform.rotation, look,
                     rotationSmoothness * Time.deltaTime);
@@ -196,13 +231,27 @@ public class PlayerController : MonoBehaviour
             animator.SetFloat("Speed", PlanarSpeed, 0.12f, Time.deltaTime);
             animator.SetFloat("Turn", TurnSignal, 0.1f, Time.deltaTime);
             animator.SetBool("Crouch", CurrentState == MoveState.Crouch);
-            // Apuntar/strafe (blend 2D direccional)
+            // Apuntar / strafe libre (blend 2D direccional; comparten AimX/AimY)
             animator.SetBool("Aiming", Aiming);
+            animator.SetBool("StrafeLock", StrafeLock);
             animator.SetBool("TurningInPlace", turningInPlace);
             animator.SetFloat("TurnInPlace", turnInPlaceDir, 0.08f, Time.deltaTime);
             animator.SetInteger("AimStance", (int)CurrentStance); // 0 puños, 1 melé, 2 arma
             animator.SetFloat("AimX", aimX, 0.1f, Time.deltaTime);
             animator.SetFloat("AimY", aimY, 0.1f, Time.deltaTime);
         }
+    }
+
+    // Rodada (esquiva): mueve al jugador en rollDir a rollSpeed durante rollDuration.
+    void UpdateRoll()
+    {
+        rollTimer += Time.deltaTime;
+        Vector3 move = rollDir * rollSpeed;
+        if (controller.isGrounded && verticalVelocity < 0f) verticalVelocity = -2f;
+        verticalVelocity += gravity * Time.deltaTime;
+        move.y = verticalVelocity;
+        controller.Move(move * Time.deltaTime);
+        PlanarSpeed = rollSpeed;
+        if (rollTimer >= rollDuration) rolling = false;
     }
 }

@@ -36,6 +36,12 @@ public static class PlayerAnimatorSetup
         (AnimDir + "/locomotion/animation_ybot_turninplace_right.fbx",        true),
         (AnimDir + "/locomotion/animation_ybot_movement_run_straight.fbx",    true),
         (AnimDir + "/locomotion/animation_ybot_movement_sprint_straight.fbx", true),
+        (AnimDir + "/locomotion/animation_ybot_movement_walk_backwards.fbx",  true),
+        (AnimDir + "/locomotion/animation_ybot_movement_walk_strafe_left.fbx",  true),
+        (AnimDir + "/locomotion/animation_ybot_movement_walk_strafe_right.fbx", true),
+        (AnimDir + "/locomotion/animation_ybot_movement_jog_strafe_left.fbx",   true),
+        (AnimDir + "/locomotion/animation_ybot_movement_jog_strafe_right.fbx",  true),
+        (AnimDir + "/locomotion/animation_ybot_run_movement_roll_straight.fbx", false), // esquiva
         (AnimDir + "/locomotion/animation_ybot_crouch_idle.fbx",              true),
         (AnimDir + "/locomotion/animation_ybot_crouch_movement_straight.fbx", true),
         (AnimDir + "/locomotion/animation_ybot_standing_movement_crouch.fbx", false), // entrar a agacharse
@@ -145,6 +151,8 @@ public static class PlayerAnimatorSetup
         controller.AddParameter("TurningInPlace", AnimatorControllerParameterType.Bool);
         controller.AddParameter("TurnInPlace", AnimatorControllerParameterType.Float); // -1 izq..+1 der
         controller.AddParameter("Aiming", AnimatorControllerParameterType.Bool);
+        controller.AddParameter("StrafeLock", AnimatorControllerParameterType.Bool); // strafe libre (Left Alt)
+        controller.AddParameter("Roll", AnimatorControllerParameterType.Trigger);    // esquiva (Espacio)
         controller.AddParameter("AimStance", AnimatorControllerParameterType.Int); // 0 puños,1 melé,2 arma
         controller.AddParameter("AimX", AnimatorControllerParameterType.Float); // strafe -1..+1
         controller.AddParameter("AimY", AnimatorControllerParameterType.Float); // atrás/adelante -1..+1
@@ -261,6 +269,34 @@ public static class PlayerAnimatorSetup
             fromAim.AddCondition(AnimatorConditionMode.IfNot, 0, "Aiming");
             fromAim.hasExitTime = false; fromAim.duration = 0.12f;
         }
+
+        // Strafe libre (sin apuntar): blend 2D direccional con clips normales
+        // (no de combate). Comparte AimX/AimY. Left Alt lo activa.
+        var strafe = controller.CreateBlendTreeInController("Strafe", out BlendTree st, 0);
+        st.blendType = BlendTreeType.SimpleDirectional2D;
+        st.blendParameter = "AimX";
+        st.blendParameterY = "AimY";
+        st.AddChild(idle, new Vector2(0f, 0f));
+        st.AddChild(walkS, new Vector2(0f, 1f)); // adelante
+        st.AddChild(LoadClip(AnimDir + "/locomotion/animation_ybot_movement_walk_backwards.fbx"),   new Vector2( 0f, -1f));
+        st.AddChild(LoadClip(AnimDir + "/locomotion/animation_ybot_movement_walk_strafe_left.fbx"),  new Vector2(-1f, 0f));
+        st.AddChild(LoadClip(AnimDir + "/locomotion/animation_ybot_movement_walk_strafe_right.fbx"), new Vector2( 1f, 0f));
+
+        var toStrafe = sm.AddAnyStateTransition(strafe);
+        toStrafe.AddCondition(AnimatorConditionMode.If, 0, "StrafeLock");
+        toStrafe.hasExitTime = false; toStrafe.duration = 0.12f; toStrafe.canTransitionToSelf = false;
+        var fromStrafe = strafe.AddTransition(loco);
+        fromStrafe.AddCondition(AnimatorConditionMode.IfNot, 0, "StrafeLock");
+        fromStrafe.hasExitTime = false; fromStrafe.duration = 0.12f;
+
+        // Esquiva (rodar): trigger "Roll" desde cualquier estado; vuelve al terminar.
+        var roll = sm.AddState("Roll");
+        roll.motion = LoadClip(AnimDir + "/locomotion/animation_ybot_run_movement_roll_straight.fbx");
+        var toRoll = sm.AddAnyStateTransition(roll);
+        toRoll.AddCondition(AnimatorConditionMode.If, 0, "Roll");
+        toRoll.hasExitTime = false; toRoll.duration = 0.05f; toRoll.canTransitionToSelf = false;
+        var fromRoll = roll.AddTransition(loco);
+        fromRoll.hasExitTime = true; fromRoll.exitTime = 0.85f; fromRoll.duration = 0.1f;
 
         // Muerte: desde cualquier estado al disparar "Die" (PlayerHealth). No vuelve.
         var death = sm.AddState("Death");
