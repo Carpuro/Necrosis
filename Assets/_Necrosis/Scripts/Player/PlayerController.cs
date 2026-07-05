@@ -35,6 +35,7 @@ public class PlayerController : MonoBehaviour
     float turn180Timer;
     Quaternion turn180From, turn180To;
     bool turn180Queued;
+    Vector3 lastMoveDir = Vector3.forward; // última dirección de movimiento (persiste en pausas)
 
     [Header("Referencias")]
     public Transform cameraTransform; // asignar la Main Camera
@@ -220,17 +221,19 @@ public class PlayerController : MonoBehaviour
             {
                 Vector3 worldDir = (camForward * v + camRight * h).normalized;
 
-                // Giro 180: si pides una dirección casi opuesta a tu rumbo actual,
-                // dispara el giro con animación y rota el cuerpo durante el clip
-                // (no de golpe). Sin filtro de velocidad: se mide facing vs input.
+                // Giro 180: compara contra la ÚLTIMA dirección de movimiento (que
+                // persiste aunque hagas una pausa breve o el cuerpo gire hacia la
+                // cámara), no contra el facing actual. Así, si tras andar/correr
+                // pulsas la opuesta, dispara el giro aunque haya pasado un momento.
                 if (!turning180 && !startingWalk &&
-                    Vector3.Angle(transform.forward, worldDir) > turn180Threshold)
+                    Vector3.Angle(lastMoveDir, worldDir) > turn180Threshold)
                 {
                     turning180 = true; turn180Timer = 0f; turn180Queued = true;
                     startWalkQueued = false; // el 180 tiene prioridad sobre el arranque
                     turn180From = transform.rotation;
                     turn180To = Quaternion.LookRotation(worldDir, Vector3.up);
                 }
+                lastMoveDir = worldDir; // recordar el rumbo para el próximo giro
 
                 // Velocidad objetivo por estado; durante el arranque es 0 (no avanza).
                 float targetSpeed = startingWalk ? 0f : CurrentState switch
