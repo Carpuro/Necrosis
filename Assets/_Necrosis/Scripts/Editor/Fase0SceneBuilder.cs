@@ -21,6 +21,7 @@ public static class Fase0SceneBuilder
     const string ExtractionMatPath = "Assets/_Necrosis/Materials/Extraction_Green.mat";
     const string StaticClipPath = "Assets/_Necrosis/Audio/static_noise.wav";
     const string AudioDir = "Assets/_Necrosis/Audio/";
+    const string FootstepDir = "Assets/_Necrosis/Audio/Footsteps/";
     const string HunterDir = "Assets/_Necrosis/Characters/Hunter/";
     const string HunterAnimatorPath = HunterDir + "HunterAnimator.controller";
 
@@ -209,6 +210,12 @@ public static class Fase0SceneBuilder
         // Modelo rigged del jugador (null-safe: sin modelo, sigue la cápsula)
         AttachPlayerModel(player, movement);
 
+        // Pasos del jugador (bucle por postura; superficie urbana por defecto)
+        var steps = player.AddComponent<FootstepAudio>();
+        steps.walkLoop = Footstep("player_walking_sidewalk.wav");
+        steps.runLoop = Footstep("player_walking_road.wav");
+        steps.crouchLoop = Footstep("player_crouch_slow_indoors_carpet.wav");
+
         // --- Cazadores: 4 cápsulas rojas repartidas, deambulan (sin puntos de patrulla) ---
         var hunterMat = AssetDatabase.LoadAssetAtPath<Material>(HunterMatPath);
         if (hunterMat == null)
@@ -266,6 +273,9 @@ public static class Fase0SceneBuilder
 
     static AudioClip Clip(string file) =>
         AssetDatabase.LoadAssetAtPath<AudioClip>(AudioDir + file);
+
+    static AudioClip Footstep(string file) =>
+        AssetDatabase.LoadAssetAtPath<AudioClip>(FootstepDir + file);
 
     // Elige un modelo del roster por peso, lo instancia como hijo de la cápsula,
     // le pone el Animator del Cazador y oculta la cápsula. Parásito = nivel superior.

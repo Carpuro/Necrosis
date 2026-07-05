@@ -29,6 +29,9 @@ public class PlayerController : MonoBehaviour
     public enum MoveState { Idle, Crouch, Walk, Run }
     public MoveState CurrentState { get; private set; } = MoveState.Idle;
 
+    /// <summary>Velocidad horizontal real (m/s). La leen Animator y pasos.</summary>
+    public float PlanarSpeed { get; private set; }
+
     CharacterController controller;
     float verticalVelocity;
     float normalHeight;
@@ -98,11 +101,13 @@ public class PlayerController : MonoBehaviour
 
         controller.Move(move * Time.deltaTime);
 
+        // Velocidad horizontal real (para Animator y pasos)
+        PlanarSpeed = new Vector3(move.x, 0f, move.z).magnitude;
+
         // --- Animación (opcional): alimenta el Animator si hay un modelo asignado ---
         if (animator != null)
         {
-            float planarSpeed = new Vector3(move.x, 0f, move.z).magnitude;
-            animator.SetFloat("Speed", planarSpeed);
+            animator.SetFloat("Speed", PlanarSpeed);
             animator.SetBool("Crouch", CurrentState == MoveState.Crouch);
         }
     }
