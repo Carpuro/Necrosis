@@ -46,8 +46,12 @@ public class PlayerController : MonoBehaviour
     /// <summary>True mientras se apunta/strafea (clic derecho mantenido).</summary>
     public bool Aiming { get; private set; }
 
-    /// <summary>True mientras se strafea libre (sin apuntar): Left Alt mantenido.</summary>
+    /// <summary>True mientras se strafea libre (sin apuntar).</summary>
     public bool StrafeLock { get; private set; }
+
+    /// <summary>Ejes de strafe que se mandan al Animator (debug).</summary>
+    public float AimX { get; private set; }
+    public float AimY { get; private set; }
 
     [Header("Esquiva (rodar)")]
     public float rollSpeed = 7f;
@@ -248,6 +252,7 @@ public class PlayerController : MonoBehaviour
             animator.SetInteger("AimStance", (int)CurrentStance); // 0 puños, 1 melé, 2 arma
             animator.SetFloat("AimX", aimX, 0.1f, Time.deltaTime);
             animator.SetFloat("AimY", aimY, 0.1f, Time.deltaTime);
+            AimX = aimX; AimY = aimY; // exponer para debug
             // Arranque al caminar: sólo al pasar de parado a caminar de frente.
             if (prevState == MoveState.Idle && CurrentState == MoveState.Walk && !faceCamera)
                 animator.SetTrigger("StartWalk");

@@ -15,6 +15,7 @@ public class DebugHUD : MonoBehaviour
     Transform player;
     PlayerSignature signature;
     PlayerHealth health;
+    PlayerController control;
 
     void Start()
     {
@@ -24,6 +25,7 @@ public class DebugHUD : MonoBehaviour
             player = p.transform;
             signature = p.GetComponent<PlayerSignature>();
             health = p.GetComponent<PlayerHealth>();
+            control = p.GetComponent<PlayerController>();
         }
     }
 
@@ -39,7 +41,12 @@ public class DebugHUD : MonoBehaviour
         var style = new GUIStyle(GUI.skin.label) { fontSize = 14 };
         style.normal.textColor = Color.white;
 
-        GUILayout.BeginArea(new Rect(12, 12, 420, 260), GUI.skin.box);
+        GUILayout.BeginArea(new Rect(12, 12, 460, 300), GUI.skin.box);
+
+        if (control != null)
+            GUILayout.Label($"🎮 {control.CurrentState} · postura {control.CurrentStance} · " +
+                            $"{(control.Aiming ? "APUNTA" : control.StrafeLock ? "STRAFE" : "libre")} · " +
+                            $"AimX {control.AimX:+0.0;-0.0} AimY {control.AimY:+0.0;-0.0}", style);
 
         var cycle = DayNightCycle.Instance;
         if (cycle != null)
