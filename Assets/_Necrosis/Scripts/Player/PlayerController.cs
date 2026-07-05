@@ -263,9 +263,10 @@ public class PlayerController : MonoBehaviour
                 };
                 if (turning180)
                 {
-                    // Durante el giro 180: NO avanza y NO acelera (velocidad congelada
-                    // en 0 para que no haya deslizamiento ni tirón al terminar).
-                    currentSpeed = 0f;
+                    // Durante el giro 180: NO avanza (move=0) pero CONSERVA la
+                    // velocidad. Si la pusiéramos a 0, al terminar aceleraría de 0
+                    // pasando por caminar -> parecería un ramp. Al conservarla,
+                    // reanuda directo a correr tras el giro.
                     move = Vector3.zero;
                     turn180Timer += Time.deltaTime;
                     float t180 = Mathf.Clamp01(turn180Timer / turn180Duration);
@@ -303,7 +304,9 @@ public class PlayerController : MonoBehaviour
         controller.Move(move * Time.deltaTime);
 
         // Velocidad horizontal real (para Animator y pasos)
-        PlanarSpeed = new Vector3(move.x, 0f, move.z).magnitude;
+        // Durante el 180 no avanzamos, pero mandamos currentSpeed para que al salir
+        // el blend reanude directo a la velocidad previa (sin pasar por caminar).
+        PlanarSpeed = turning180 ? currentSpeed : new Vector3(move.x, 0f, move.z).magnitude;
 
         // Señal de giro: velocidad angular en yaw, normalizada a -1 (izq) .. +1 (der)
         float yaw = transform.eulerAngles.y;
