@@ -33,6 +33,8 @@ public static class PlayerAnimatorSetup
         (AnimDir + "/locomotion/animation_ybot_movement_walk_turn_right.fbx", true),
         (AnimDir + "/locomotion/animation_ybot_movement_run_turn_left.fbx",   true),
         (AnimDir + "/locomotion/animation_ybot_movement_run_turn_right.fbx",  true),
+        (AnimDir + "/locomotion/animation_ybot_movement_walk_turn_180.fbx",   false),
+        (AnimDir + "/locomotion/animation_ybot_movement_run_turn_180.fbx",    false),
         (AnimDir + "/locomotion/animation_ybot_turninplace_left.fbx",         true),
         (AnimDir + "/locomotion/animation_ybot_turninplace_right.fbx",        true),
         (AnimDir + "/locomotion/animation_ybot_movement_run_straight.fbx",    true),
@@ -155,6 +157,7 @@ public static class PlayerAnimatorSetup
         controller.AddParameter("StrafeLock", AnimatorControllerParameterType.Bool); // strafe libre (Left Alt)
         controller.AddParameter("Roll", AnimatorControllerParameterType.Trigger);    // esquiva (Espacio)
         controller.AddParameter("StartWalk", AnimatorControllerParameterType.Trigger); // arranque idle->caminar
+        controller.AddParameter("Turn180", AnimatorControllerParameterType.Trigger);   // giro 180 al invertir
         controller.AddParameter("AimStance", AnimatorControllerParameterType.Int); // 0 puños,1 melé,2 arma
         controller.AddParameter("AimX", AnimatorControllerParameterType.Float); // strafe -1..+1
         controller.AddParameter("AimY", AnimatorControllerParameterType.Float); // atrás/adelante -1..+1
@@ -239,6 +242,20 @@ public static class PlayerAnimatorSetup
         // empieza a avanzar en ese punto (ver walkStartDuration en PlayerController).
         var fromWalkStart = walkStart.AddTransition(loco);
         fromWalkStart.hasExitTime = true; fromWalkStart.exitTime = 0.5f; fromWalkStart.duration = 0.12f;
+
+        // Giro 180 (al invertir el sentido de marcha): blend por Speed
+        // (walk_180 lento, run_180 rápido). Trigger Turn180; vuelve al terminar.
+        var turn180 = controller.CreateBlendTreeInController("Turn180", out BlendTree t180, 0);
+        t180.blendType = BlendTreeType.Simple1D;
+        t180.blendParameter = "Speed";
+        t180.useAutomaticThresholds = false;
+        t180.AddChild(LoadClip(AnimDir + "/locomotion/animation_ybot_movement_walk_turn_180.fbx"), 0f);
+        t180.AddChild(LoadClip(AnimDir + "/locomotion/animation_ybot_movement_run_turn_180.fbx"), 5f);
+        var toTurn180 = sm.AddAnyStateTransition(turn180);
+        toTurn180.AddCondition(AnimatorConditionMode.If, 0, "Turn180");
+        toTurn180.hasExitTime = false; toTurn180.duration = 0.08f; toTurn180.canTransitionToSelf = false;
+        var fromTurn180 = turn180.AddTransition(loco);
+        fromTurn180.hasExitTime = true; fromTurn180.exitTime = 0.7f; fromTurn180.duration = 0.12f;
 
         // Giro en el sitio (parado): blend 1D por TurnInPlace (izq/idle/der). Se
         // entra desde locomoción cuando TurningInPlace y sale al terminar. Visible.

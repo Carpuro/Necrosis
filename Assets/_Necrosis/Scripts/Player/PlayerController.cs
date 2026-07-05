@@ -27,6 +27,15 @@ public class PlayerController : MonoBehaviour
     public float deceleration = 16f;
     float currentSpeed; // velocidad actual suavizada (para la rampa natural)
 
+    [Header("Giro 180 (invertir el sentido)")]
+    [Tooltip("Ángulo (grados) contra tu rumbo para disparar el giro 180.")]
+    public float turn180Threshold = 135f;
+    public float turn180Duration = 0.45f;
+    bool turning180;
+    float turn180Timer;
+    Quaternion turn180From, turn180To;
+    bool turn180Queued;
+
     [Header("Referencias")]
     public Transform cameraTransform; // asignar la Main Camera
 
@@ -210,6 +219,17 @@ public class PlayerController : MonoBehaviour
             else if (moving)
             {
                 Vector3 worldDir = (camForward * v + camRight * h).normalized;
+
+                // Giro 180: si inviertes el sentido a buena velocidad, dispara el
+                // giro con animación y rota el cuerpo durante el clip (no de golpe).
+                if (!turning180 && !startingWalk && currentSpeed > 1f &&
+                    Vector3.Angle(transform.forward, worldDir) > turn180Threshold)
+                {
+                    turning180 = true; turn180Timer = 0f; turn180Queued = true;
+                    turn180From = transform.rotation;
+                    turn180To = Quaternion.LookRotation(worldDir, Vector3.up);
+                }
+
                 // Velocidad objetivo por estado; durante el arranque es 0 (no avanza).
                 float targetSpeed = startingWalk ? 0f : CurrentState switch
                 {
@@ -218,18 +238,28 @@ public class PlayerController : MonoBehaviour
                     MoveState.Run => runSpeed,
                     _ => walkSpeed
                 };
-                // Rampa: la velocidad SUBE gradualmente (idle->caminar->correr), así
-                // la mezcla de animación pasa por caminar antes de correr.
                 float rate = targetSpeed > currentSpeed ? acceleration : deceleration;
                 currentSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, rate * Time.deltaTime);
                 move = worldDir * currentSpeed;
 
-                // Rotar el cuerpo hacia la dirección de movimiento
-                Quaternion targetRot = Quaternion.LookRotation(worldDir, Vector3.up);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRot,
-                    rotationSmoothness * Time.deltaTime);
+                if (turning180)
+                {
+                    // Durante el giro 180 rota el cuerpo por el clip y NO avanza.
+                    turn180Timer += Time.deltaTime;
+                    float t180 = Mathf.Clamp01(turn180Timer / turn180Duration);
+                    transform.rotation = Quaternion.Slerp(turn180From, turn180To, t180);
+                    move.x = 0f; move.z = 0f;
+                    if (t180 >= 1f) turning180 = false;
+                }
+                else
+                {
+                    // Rotar el cuerpo hacia la dirección de movimiento
+                    Quaternion targetRot = Quaternion.LookRotation(worldDir, Vector3.up);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, targetRot,
+                        rotationSmoothness * Time.deltaTime);
+                }
             }
-            else currentSpeed = 0f; // parado: reinicia la rampa
+            else { currentSpeed = 0f; turning180 = false; } // parado: reinicia
         }
 
         // Arranque al caminar: no avanzar mientras se planta el paso (sin shuffle).
@@ -243,7 +273,9 @@ public class PlayerController : MonoBehaviour
         controller.Move(move * Time.deltaTime);
 
         // Velocidad horizontal real (para Animator y pasos)
-        PlanarSpeed = new Vector3(move.x, 0f, move.z).magnitude;
+        // Durante el giro 180 no avanzamos, pero mandamos currentSpeed para que el
+        // blend elija bien caminar/correr 180.
+        PlanarSpeed = turning180 ? currentSpeed : new Vector3(move.x, 0f, move.z).magnitude;
 
         // Señal de giro: velocidad angular en yaw, normalizada a -1 (izq) .. +1 (der)
         float yaw = transform.eulerAngles.y;
@@ -293,8 +325,10 @@ public class PlayerController : MonoBehaviour
             AimX = aimX; AimY = aimY; // exponer para debug
             // Arranque al caminar (se detectó arriba)
             if (startWalkQueued) animator.SetTrigger("StartWalk");
+            if (turn180Queued) animator.SetTrigger("Turn180");
         }
         startWalkQueued = false;
+        turn180Queued = false;
         prevState = CurrentState;
     }
 
