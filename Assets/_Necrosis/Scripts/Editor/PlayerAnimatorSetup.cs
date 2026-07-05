@@ -128,24 +128,16 @@ public static class PlayerAnimatorSetup
         }
 
         bool mirror = System.Array.Exists(MirrorClips, m => path.EndsWith(m));
-        // Clips de giro: la ROTACIÓN pasa como root motion (para girar el cuerpo con
-        // la animación, sin deslizar los pies). La posición SIEMPRE en el sitio
-        // (la maneja el código). Enfoque híbrido recomendado por la comunidad Unity.
-        bool isTurn = path.Contains("turn");
-
-        var clips = imp.defaultClipAnimations;
-        for (int i = 0; i < clips.Length; i++)
+        if (loop.HasValue || mirror)
         {
-            if (loop.HasValue) clips[i].loopTime = loop.Value;
-            if (mirror) clips[i].mirror = true; // giro derecha = izquierda espejado
-            // Posición en el sitio (código maneja el avance): sin root motion XZ/Y.
-            clips[i].lockRootPositionXZ = true;
-            clips[i].lockRootHeightY = true;
-            // Rotación: root motion SOLO en giros (lock=false deja que rote el root).
-            clips[i].lockRootRotation = !isTurn;
-            if (isTurn) clips[i].keepOriginalOrientation = true;
+            var clips = imp.defaultClipAnimations;
+            for (int i = 0; i < clips.Length; i++)
+            {
+                if (loop.HasValue) clips[i].loopTime = loop.Value;
+                if (mirror) clips[i].mirror = true; // giro derecha = izquierda espejado
+            }
+            if (clips.Length > 0) imp.clipAnimations = clips;
         }
-        if (clips.Length > 0) imp.clipAnimations = clips;
         imp.SaveAndReimport();
     }
 
