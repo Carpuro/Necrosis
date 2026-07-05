@@ -53,6 +53,9 @@ public class PlayerController : MonoBehaviour
     public float turnInPlaceThreshold = 50f;
     [Tooltip("Angular speed (deg/s) when turning in place.")]
     public float turnInPlaceSpeed = 240f;
+    [Tooltip("Seconds standing still before the in-place turn may engage. Stops it " +
+             "from firing during/right after a walking turn or a quick stop.")]
+    public float turnInPlaceIdleDelay = 0.3f;
 
     [Header("180 turn (reverse direction)")]
     [Tooltip("Angle vs. last heading that triggers the 180.")]
@@ -461,7 +464,10 @@ public class PlayerController : MonoBehaviour
     {
         animTurnInPlaceDir = 0f;
 
-        if (Aiming || CurrentState != MoveState.Idle || cameraTransform == null)
+        // Only when genuinely idle for a moment — never during/right after walking
+        // (otherwise a walking turn or a quick stop pops the idle-turn animation).
+        if (Aiming || CurrentState != MoveState.Idle || cameraTransform == null
+            || idleTime < turnInPlaceIdleDelay)
         {
             turningInPlace = false;
             return;
