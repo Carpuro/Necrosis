@@ -30,9 +30,9 @@ public static class Fase0SceneBuilder
     // gitignoreado en un clon), ese Cazador se queda como cápsula (null-safe).
     static readonly (string file, float weight, bool higherTier)[] HunterModels =
     {
-        ("zombie.fbx",      40f, false),
-        ("zombie_girl.fbx", 40f, false),
-        ("parasite.fbx",    20f, true),
+        ("model_zombie_tpose.fbx",     40f, false),
+        ("model_zombiegirl_tpose.fbx", 40f, false),
+        ("model_parasite_tpose.fbx",   20f, true),
     };
     const float ParasiteSpeedMult = 1.2f;   // nivel superior: más rápido
     const float ParasiteDamageMult = 1.6f;  // pega más fuerte
@@ -41,7 +41,7 @@ public static class Fase0SceneBuilder
 
     const string PlayerDir = "Assets/_Necrosis/Characters/Player/";
     const string PlayerAnimatorPath = PlayerDir + "PlayerAnimator.controller";
-    const string PlayerModelFile = "y_bot.fbx"; // coincide con las animaciones (Y Bot)
+    const string PlayerModelFile = "model_ybot_tpose.fbx"; // coincide con las animaciones (Y Bot)
 
     // La ronda es una carrera de extracción de borde a borde (suelo 100x100).
     static readonly Vector3 PlayerSpawn = new Vector3(0f, 1.1f, -45f); // borde SUR
