@@ -19,20 +19,20 @@ public static class HunterAnimatorSetup
 
     static readonly string[] Models =
     {
-        HunterDir + "/model_zombie_tpose.fbx",
-        HunterDir + "/model_parasite_tpose.fbx",
-        HunterDir + "/model_zombiegirl_tpose.fbx",
+        HunterDir + "/Models/model_zombie_tpose.fbx",
+        HunterDir + "/Models/model_parasite_tpose.fbx",
+        HunterDir + "/Models/model_zombie_girl_tpose.fbx",
     };
 
     // clip -> ¿en loop?
     static readonly (string file, bool loop)[] Anims =
     {
-        (AnimDir + "/zombie_idle.fbx",   true),
-        (AnimDir + "/zombie_walk.fbx",   true),
-        (AnimDir + "/zombie_run.fbx",    true),
-        (AnimDir + "/zombie_scream.fbx", true),
-        (AnimDir + "/zombie_attack.fbx", false),
-        (AnimDir + "/zombie_death.fbx",  false),
+        (AnimDir + "/locomotion/animation_zombie_idle.fbx",                 true),
+        (AnimDir + "/locomotion/animation_zombie_movement_walk_straight.fbx", true),
+        (AnimDir + "/locomotion/animation_zombie_movement_run_straight.fbx",  true),
+        (AnimDir + "/locomotion/animation_zombie_scream.fbx",               true),
+        (AnimDir + "/melee/animation_zombie_melee_attack.fbx",              false),
+        (AnimDir + "/death/animation_zombie_death_1.fbx",                   false),
     };
 
     [MenuItem("Necrosis/Setup animación del Cazador")]
@@ -93,14 +93,14 @@ public static class HunterAnimatorSetup
         tree.blendType = BlendTreeType.Simple1D;
         tree.blendParameter = "Speed";
         tree.useAutomaticThresholds = false; // respetar los umbrales en m/s reales (si no, Unity los reparte 0..1)
-        tree.AddChild(LoadClip(AnimDir + "/zombie_idle.fbx"), 0f);
-        tree.AddChild(LoadClip(AnimDir + "/zombie_walk.fbx"), 1f);
-        tree.AddChild(LoadClip(AnimDir + "/zombie_run.fbx"), 2f); // la persecución baja a ~2.3 con poca luz; patrulla ~1.6 se queda en walk
+        tree.AddChild(LoadClip(AnimDir + "/locomotion/animation_zombie_idle.fbx"), 0f);
+        tree.AddChild(LoadClip(AnimDir + "/locomotion/animation_zombie_movement_walk_straight.fbx"), 1f);
+        tree.AddChild(LoadClip(AnimDir + "/locomotion/animation_zombie_movement_run_straight.fbx"), 2f); // persecución ~2.3 con poca luz; patrulla ~1.6 = walk
         sm.defaultState = loco;
 
         // Ataque: desde cualquier estado cuando Attacking; vuelve al soltarlo
         var attack = sm.AddState("Attack");
-        attack.motion = LoadClip(AnimDir + "/zombie_attack.fbx");
+        attack.motion = LoadClip(AnimDir + "/melee/animation_zombie_melee_attack.fbx");
         var toAttack = sm.AddAnyStateTransition(attack);
         toAttack.AddCondition(AnimatorConditionMode.If, 0, "Attacking");
         toAttack.hasExitTime = false;
