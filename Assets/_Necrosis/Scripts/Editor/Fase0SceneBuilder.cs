@@ -21,6 +21,22 @@ public static class Fase0SceneBuilder
     const string ExtractionMatPath = "Assets/_Necrosis/Materials/Extraction_Green.mat";
     const string StaticClipPath = "Assets/_Necrosis/Audio/static_noise.wav";
     const string AudioDir = "Assets/_Necrosis/Audio/";
+    const string HunterDir = "Assets/_Necrosis/Characters/Hunter/";
+    const string HunterAnimatorPath = HunterDir + "HunterAnimator.controller";
+
+    // Roster de Cazadores: zombie/zombiegirl comunes; parásito = nivel superior (raro).
+    // Los pesos deciden la frecuencia de spawn. Si un modelo falta (p. ej. el zombi
+    // gitignoreado en un clon), ese Cazador se queda como cápsula (null-safe).
+    static readonly (string file, float weight, bool higherTier)[] HunterModels =
+    {
+        ("model_zombie_tpose.fbx",     40f, false),
+        ("model_zombiegirl_tpose.fbx", 40f, false),
+        ("model_parasite_tpose.fbx",   20f, true),
+    };
+    const float ParasiteSpeedMult = 1.2f;   // nivel superior: más rápido
+    const float ParasiteDamageMult = 1.6f;  // pega más fuerte
+    const float ParasiteScale = 1.25f;      // un poco más grande
+    const float HunterModelYOffset = -1f;   // baja el modelo para que los pies toquen el suelo
 
     // La ronda es una carrera de extracción de borde a borde (suelo 100x100).
     static readonly Vector3 PlayerSpawn = new Vector3(0f, 1.1f, -45f); // borde SUR
@@ -222,6 +238,9 @@ public static class Fase0SceneBuilder
             voice.frenzyVoice = Clip("zombie_scream.wav");
             voice.attackClip  = Clip("zombie_attack.wav");
             voice.nearClip    = Clip("zombie_near.wav");
+
+            // Modelo rigged (aleatorio, con nivel superior parásito); null-safe
+            AttachHunterModel(hunter, ai);
         }
 
         // --- Control de misión: objetivo, distancia restante y resultado ---
@@ -240,4 +259,52 @@ public static class Fase0SceneBuilder
 
     static AudioClip Clip(string file) =>
         AssetDatabase.LoadAssetAtPath<AudioClip>(AudioDir + file);
+
+    // Elige un modelo del roster por peso, lo instancia como hijo de la cápsula,
+    // le pone el Animator del Cazador y oculta la cápsula. Parásito = nivel superior.
+    static void AttachHunterModel(GameObject capsule, HunterAI ai)
+    {
+        var pick = WeightedPick(HunterModels);
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(HunterDir + pick.file);
+        if (prefab == null) return; // modelo ausente (p. ej. zombi gitignoreado): sigue cápsula
+
+        var model = (GameObject)Object.Instantiate(prefab);
+        model.name = "Model";
+        model.transform.SetParent(capsule.transform, false);
+        model.transform.localPosition = new Vector3(0f, HunterModelYOffset, 0f);
+        model.transform.localRotation = Quaternion.identity;
+
+        var animator = model.GetComponent<Animator>();
+        if (animator == null) animator = model.AddComponent<Animator>();
+        animator.runtimeAnimatorController =
+            AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(HunterAnimatorPath);
+        animator.applyRootMotion = false; // el movimiento lo manda el NavMeshAgent
+        ai.animator = animator;
+
+        // Ocultar la cápsula (mantiene collider/lógica; quita solo el render)
+        var rend = capsule.GetComponent<MeshRenderer>();
+        if (rend != null) rend.enabled = false;
+
+        // Nivel superior (parásito): más rápido, pega más fuerte y algo más grande
+        if (pick.higherTier)
+        {
+            ai.baseChaseSpeed *= ParasiteSpeedMult;
+            ai.attackDamage *= ParasiteDamageMult;
+            capsule.transform.localScale *= ParasiteScale;
+        }
+    }
+
+    static (string file, float weight, bool higherTier) WeightedPick(
+        (string file, float weight, bool higherTier)[] options)
+    {
+        float total = 0f;
+        foreach (var o in options) total += o.weight;
+        float r = Random.Range(0f, total);
+        foreach (var o in options)
+        {
+            r -= o.weight;
+            if (r <= 0f) return o;
+        }
+        return options[options.Length - 1];
+    }
 }
