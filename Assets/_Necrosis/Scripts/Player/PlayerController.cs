@@ -127,8 +127,11 @@ public class PlayerController : MonoBehaviour
 
         // Apuntar/strafear: clic derecho mantenido (estilo State of Decay).
         Aiming = Input.GetMouseButton(1) && cameraTransform != null;
-        // Strafe libre (sin apuntar): Left Alt mantenido.
-        StrafeLock = Input.GetKey(KeyCode.LeftAlt) && !Aiming && cameraTransform != null;
+        // Strafe libre AUTOMÁTICO cuando vas desarmado (puños), sin tecla: al andar
+        // strafeas mirando a cámara; correr (C) o esprintar (Shift) rompen a
+        // locomoción normal de frente (para huir con giros).
+        StrafeLock = !Aiming && cameraTransform != null && CurrentStance == Stance.Fists
+                     && !sprintHeld && !runToggled;
         bool faceCamera = Aiming || StrafeLock;
         bool crouched = crouchToggled && !faceCamera; // al apuntar/strafear se está de pie
 
@@ -162,7 +165,9 @@ public class PlayerController : MonoBehaviour
                 Quaternion look = Quaternion.LookRotation(camForward, Vector3.up);
                 transform.rotation = Quaternion.Slerp(transform.rotation, look,
                     rotationSmoothness * Time.deltaTime);
-                if (moving) move = (camForward * v + camRight * h).normalized * aimSpeed;
+                // Apuntar usa aimSpeed (más lento); strafe libre desarmado usa walk.
+                float faceSpeed = Aiming ? aimSpeed : walkSpeed;
+                if (moving) move = (camForward * v + camRight * h).normalized * faceSpeed;
                 aimX = h; aimY = v;
             }
             else if (moving)
