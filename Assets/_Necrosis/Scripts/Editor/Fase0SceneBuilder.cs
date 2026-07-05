@@ -38,6 +38,10 @@ public static class Fase0SceneBuilder
     const float ParasiteScale = 1.25f;      // un poco más grande
     const float HunterModelYOffset = -1f;   // baja el modelo para que los pies toquen el suelo
 
+    const string PlayerDir = "Assets/_Necrosis/Characters/Player/";
+    const string PlayerAnimatorPath = PlayerDir + "PlayerAnimator.controller";
+    const string PlayerModelFile = "model_xbot_tpose.fbx";
+
     // La ronda es una carrera de extracción de borde a borde (suelo 100x100).
     static readonly Vector3 PlayerSpawn = new Vector3(0f, 1.1f, -45f); // borde SUR
     static readonly Vector3 ExtractionPos = new Vector3(0f, 0f, 45f);  // borde NORTE
@@ -202,6 +206,9 @@ public static class Fase0SceneBuilder
         shoulder.target = pivot.transform;
         movement.cameraTransform = cam.transform;
 
+        // Modelo rigged del jugador (null-safe: sin modelo, sigue la cápsula)
+        AttachPlayerModel(player, movement);
+
         // --- Cazadores: 4 cápsulas rojas repartidas, deambulan (sin puntos de patrulla) ---
         var hunterMat = AssetDatabase.LoadAssetAtPath<Material>(HunterMatPath);
         if (hunterMat == null)
@@ -292,6 +299,28 @@ public static class Fase0SceneBuilder
             ai.attackDamage *= ParasiteDamageMult;
             capsule.transform.localScale *= ParasiteScale;
         }
+    }
+
+    static void AttachPlayerModel(GameObject player, PlayerController movement)
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerDir + PlayerModelFile);
+        if (prefab == null) return;
+
+        var model = (GameObject)Object.Instantiate(prefab);
+        model.name = "Model";
+        model.transform.SetParent(player.transform, false);
+        model.transform.localPosition = new Vector3(0f, HunterModelYOffset, 0f);
+        model.transform.localRotation = Quaternion.identity;
+
+        var animator = model.GetComponent<Animator>();
+        if (animator == null) animator = model.AddComponent<Animator>();
+        animator.runtimeAnimatorController =
+            AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(PlayerAnimatorPath);
+        animator.applyRootMotion = false;
+        movement.animator = animator;
+
+        var rend = player.GetComponent<MeshRenderer>();
+        if (rend != null) rend.enabled = false;
     }
 
     static (string file, float weight, bool higherTier) WeightedPick(
