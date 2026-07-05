@@ -59,7 +59,11 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Tiempo SIN avanzar al arrancar: hasta que el primer pie apoya (clip a 2x). " +
              "Luego empieza a caminar. Ajustar para que coincida con el apoyo del pie.")]
     public float walkStartDuration = 0.18f;
+    [Tooltip("Segundos parado antes de permitir el ramp de arranque. Evita que se " +
+             "dispare justo tras caminar/correr (inversiones, giros).")]
+    public float walkStartIdleDelay = 0.4f;
     float walkStartTimer;
+    float idleTime; // segundos que llevas parado (0 mientras te mueves)
     bool startWalkQueued;
 
     /// <summary>Velocidad horizontal real (m/s). La leen Animator y pasos.</summary>
@@ -176,14 +180,17 @@ public class PlayerController : MonoBehaviour
         //     mientras dura; luego la velocidad sube en rampa idle->caminar->correr. ---
         bool groundMove = CurrentState == MoveState.Walk || CurrentState == MoveState.Run ||
                           CurrentState == MoveState.Sprint;
-        // Sólo arranca desde parado DE VERDAD (velocidad ~0): así una inversión o
-        // un frame suelto al girar NO dispara el ramp estando ya en movimiento.
+        // El ramp SOLO si venías parado un rato (idleTime del frame previo >= delay).
+        // Así una inversión/giro justo tras moverte NO lo dispara (tu idea, la simple).
         if (prevState == MoveState.Idle && groundMove && !faceCamera && !crouched
-            && !turning180 && currentSpeed < 0.5f)
+            && !turning180 && idleTime >= walkStartIdleDelay)
         {
             walkStartTimer = walkStartDuration;
             startWalkQueued = true; // dispara el trigger del Animator abajo
         }
+        // Actualiza el contador DESPUÉS de comprobar: 0 al moverte, sube al estar quieto.
+        if (moving) idleTime = 0f; else idleTime += Time.deltaTime;
+
         bool startingWalk = walkStartTimer > 0f;
         if (startingWalk) walkStartTimer -= Time.deltaTime;
         // Cancelar si dejas de moverte o pasas a apuntar/agacharte
