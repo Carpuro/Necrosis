@@ -226,10 +226,11 @@ public class PlayerController : MonoBehaviour
     bool TryStartRoll()
     {
         if (!input.RollPressed || !controller.isGrounded) return false;
+        // Committed animations: can't roll (or interrupt) while a turn is playing.
+        if (discreteTurning || turning180) return false;
 
         rolling = true;
         rollTimer = 0f;
-        discreteTurning = false; turning180 = false; // roll cleanly overrides any turn
 
         // Roll toward input direction, or straight ahead if idle.
         Vector3 wish = cameraTransform != null
