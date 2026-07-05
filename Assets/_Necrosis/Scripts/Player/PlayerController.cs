@@ -519,6 +519,9 @@ public class PlayerController : MonoBehaviour
         float turnSide = Mathf.Sign(turnSelect);
         float deg = (Mathf.Abs(turnSelect) > 1.5f ? 180f : 90f) * turnSide;
         discreteTo = Quaternion.Euler(0f, transform.eulerAngles.y + deg, 0f);
+        // Remember this as the heading so GroundMovement doesn't immediately fire a
+        // SECOND 180 afterwards (stale lastMoveDir was the pre-turn direction).
+        lastMoveDir = worldDir;
         // Cancel the forward walk-start; the discrete turn takes over.
         startWalkQueued = false; walkStartTimer = 0f; startingWalk = false;
     }
