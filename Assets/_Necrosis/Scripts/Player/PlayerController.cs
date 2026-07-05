@@ -276,7 +276,13 @@ public class PlayerController : MonoBehaviour
                         rotationSmoothness * Time.deltaTime);
                 }
             }
-            else { currentSpeed = 0f; turning180 = false; } // parado: reinicia
+            else
+            {
+                // Parado: la velocidad DECAE (no se resetea de golpe). Así un frame
+                // suelto al invertir no borra la memoria de "iba en movimiento",
+                // y el ramp de arranque no se dispara por error.
+                currentSpeed = Mathf.MoveTowards(currentSpeed, 0f, deceleration * Time.deltaTime);
+            }
         }
 
         // Arranque al caminar: no avanzar mientras se planta el paso (sin shuffle).
