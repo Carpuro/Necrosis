@@ -14,6 +14,8 @@ public class PlayerController : MonoBehaviour
     public float walkSpeed = 3.5f;
     public float runSpeed = 6.5f;
     public float sprintSpeed = 8f;
+    [Tooltip("Velocidad al apuntar/strafear (clic derecho), estilo State of Decay.")]
+    public float aimSpeed = 2.8f;
 
     [Header("Física")]
     public float gravity = -20f;
@@ -39,6 +41,9 @@ public class PlayerController : MonoBehaviour
 
     /// <summary>Giro normalizado: -1 (izquierda) .. +1 (derecha). Lo lee el Animator.</summary>
     public float TurnSignal { get; private set; }
+
+    /// <summary>True mientras se apunta/strafea (clic derecho mantenido).</summary>
+    public bool Aiming { get; private set; }
 
     [Header("Giro")]
     [Tooltip("Velocidad angular (grados/s) que corresponde al giro completo de la animación.")]
@@ -72,17 +77,20 @@ public class PlayerController : MonoBehaviour
         Vector3 inputDir = new Vector3(h, 0f, v).normalized;
         bool moving = inputDir.sqrMagnitude > 0.01f;
 
-        // --- Estado de movimiento (prioridad: agachado > esprint > correr > caminar) ---
-        if (crouchToggled) CurrentState = MoveState.Crouch;
+        // Apuntar/strafear: clic derecho mantenido (estilo State of Decay).
+        Aiming = Input.GetMouseButton(1) && cameraTransform != null;
+        bool crouched = crouchToggled && !Aiming; // al apuntar se está de pie
+
+        // --- Estado de movimiento (prioridad: apuntar > agachado > esprint > correr > caminar) ---
+        if (Aiming) CurrentState = moving ? MoveState.Walk : MoveState.Idle;
+        else if (crouched) CurrentState = MoveState.Crouch;
         else if (!moving) CurrentState = MoveState.Idle;
         else if (sprintHeld) CurrentState = MoveState.Sprint;
         else if (runToggled) CurrentState = MoveState.Run;
         else CurrentState = MoveState.Walk;
 
         // Altura del collider al agacharse.
-        // El centro baja la mitad de lo que baja la altura para que los pies
-        // sigan en el suelo (si no, la cápsula encoge flotando alrededor del centro).
-        float targetHeight = crouchToggled ? normalHeight * 0.55f : normalHeight;
+        float targetHeight = crouched ? normalHeight * 0.55f : normalHeight;
         controller.height = Mathf.Lerp(controller.height, targetHeight, 10f * Time.deltaTime);
         Vector3 center = controller.center;
         center.y = normalCenterY - (normalHeight - controller.height) * 0.5f;
@@ -90,25 +98,39 @@ public class PlayerController : MonoBehaviour
 
         // --- Movimiento relativo a cámara ---
         Vector3 move = Vector3.zero;
-        if (moving && cameraTransform != null)
+        float aimX = 0f, aimY = 0f; // strafe (X) y avance/retroceso (Y) al apuntar
+        if (cameraTransform != null)
         {
             Vector3 camForward = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
             Vector3 camRight = Vector3.ProjectOnPlane(cameraTransform.right, Vector3.up).normalized;
-            Vector3 worldDir = (camForward * v + camRight * h).normalized;
 
-            float speed = CurrentState switch
+            if (Aiming)
             {
-                MoveState.Crouch => crouchSpeed,
-                MoveState.Sprint => sprintSpeed,
-                MoveState.Run => runSpeed,
-                _ => walkSpeed
-            };
-            move = worldDir * speed;
+                // El cuerpo mira SIEMPRE hacia donde apunta la cámara; el movimiento
+                // es lateral/atrás respecto a ese eje (strafe). WASD = ejes del cuerpo.
+                Quaternion look = Quaternion.LookRotation(camForward, Vector3.up);
+                transform.rotation = Quaternion.Slerp(transform.rotation, look,
+                    rotationSmoothness * Time.deltaTime);
+                if (moving) move = (camForward * v + camRight * h).normalized * aimSpeed;
+                aimX = h; aimY = v;
+            }
+            else if (moving)
+            {
+                Vector3 worldDir = (camForward * v + camRight * h).normalized;
+                float speed = CurrentState switch
+                {
+                    MoveState.Crouch => crouchSpeed,
+                    MoveState.Sprint => sprintSpeed,
+                    MoveState.Run => runSpeed,
+                    _ => walkSpeed
+                };
+                move = worldDir * speed;
 
-            // Rotar el cuerpo hacia la dirección de movimiento
-            Quaternion targetRot = Quaternion.LookRotation(worldDir, Vector3.up);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRot,
-                rotationSmoothness * Time.deltaTime);
+                // Rotar el cuerpo hacia la dirección de movimiento
+                Quaternion targetRot = Quaternion.LookRotation(worldDir, Vector3.up);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRot,
+                    rotationSmoothness * Time.deltaTime);
+            }
         }
 
         // --- Gravedad ---
@@ -135,6 +157,10 @@ public class PlayerController : MonoBehaviour
             animator.SetFloat("Speed", PlanarSpeed, 0.12f, Time.deltaTime);
             animator.SetFloat("Turn", TurnSignal, 0.1f, Time.deltaTime);
             animator.SetBool("Crouch", CurrentState == MoveState.Crouch);
+            // Apuntar/strafe (blend 2D direccional)
+            animator.SetBool("Aiming", Aiming);
+            animator.SetFloat("AimX", aimX, 0.1f, Time.deltaTime);
+            animator.SetFloat("AimY", aimY, 0.1f, Time.deltaTime);
         }
     }
 }

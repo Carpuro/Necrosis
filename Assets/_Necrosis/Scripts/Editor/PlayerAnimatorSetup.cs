@@ -40,6 +40,11 @@ public static class PlayerAnimatorSetup
         (AnimDir + "/melee/animation_ybot_melee_swing.fbx",                   false),
         (AnimDir + "/death/animation_ybot_death_1.fbx",                       false),
         (AnimDir + "/death/animation_ybot_death_2.fbx",                       false),
+        (AnimDir + "/aim/animation_ybot_aim_idle.fbx",                        true),
+        (AnimDir + "/aim/animation_ybot_aim_forward.fbx",                     true),
+        (AnimDir + "/aim/animation_ybot_aim_backward.fbx",                    true),
+        (AnimDir + "/aim/animation_ybot_aim_left.fbx",                        true),
+        (AnimDir + "/aim/animation_ybot_aim_right.fbx",                       true),
     };
 
     // El clip de giro a la derecha es el de la izquierda ESPEJADO (no hay right nativo).
@@ -98,6 +103,9 @@ public static class PlayerAnimatorSetup
         controller.AddParameter("Turn", AnimatorControllerParameterType.Float);   // -1 izq .. +1 der
         controller.AddParameter("Crouch", AnimatorControllerParameterType.Bool);
         controller.AddParameter("Die", AnimatorControllerParameterType.Trigger);
+        controller.AddParameter("Aiming", AnimatorControllerParameterType.Bool);
+        controller.AddParameter("AimX", AnimatorControllerParameterType.Float); // strafe -1..+1
+        controller.AddParameter("AimY", AnimatorControllerParameterType.Float); // atrás/adelante -1..+1
 
         var sm = controller.layers[0].stateMachine;
 
@@ -164,6 +172,26 @@ public static class PlayerAnimatorSetup
         var exitCancel = crouchExit.AddTransition(crouch);
         exitCancel.AddCondition(AnimatorConditionMode.If, 0, "Crouch");
         exitCancel.hasExitTime = false; exitCancel.duration = 0.1f;
+
+        // Apuntar/strafe (State of Decay): blend 2D direccional (X=AimX, Y=AimY).
+        // El cuerpo mira a cámara; WASD strafea. Clips en pose de combate (rifle).
+        var aim = controller.CreateBlendTreeInController("Aim", out BlendTree aimTree, 0);
+        aimTree.blendType = BlendTreeType.SimpleDirectional2D;
+        aimTree.blendParameter = "AimX";
+        aimTree.blendParameterY = "AimY";
+        aimTree.AddChild(LoadClip(AnimDir + "/aim/animation_ybot_aim_idle.fbx"),     new Vector2( 0f,  0f));
+        aimTree.AddChild(LoadClip(AnimDir + "/aim/animation_ybot_aim_forward.fbx"),  new Vector2( 0f,  1f));
+        aimTree.AddChild(LoadClip(AnimDir + "/aim/animation_ybot_aim_backward.fbx"), new Vector2( 0f, -1f));
+        aimTree.AddChild(LoadClip(AnimDir + "/aim/animation_ybot_aim_left.fbx"),     new Vector2(-1f,  0f));
+        aimTree.AddChild(LoadClip(AnimDir + "/aim/animation_ybot_aim_right.fbx"),    new Vector2( 1f,  0f));
+
+        // Entrar a apuntar desde cualquier estado; salir al soltar clic derecho.
+        var toAim = sm.AddAnyStateTransition(aim);
+        toAim.AddCondition(AnimatorConditionMode.If, 0, "Aiming");
+        toAim.hasExitTime = false; toAim.duration = 0.12f; toAim.canTransitionToSelf = false;
+        var fromAim = aim.AddTransition(loco);
+        fromAim.AddCondition(AnimatorConditionMode.IfNot, 0, "Aiming");
+        fromAim.hasExitTime = false; fromAim.duration = 0.12f;
 
         // Muerte: desde cualquier estado al disparar "Die" (PlayerHealth). No vuelve.
         var death = sm.AddState("Death");
