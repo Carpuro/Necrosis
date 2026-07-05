@@ -30,6 +30,8 @@ public static class PlayerAnimatorSetup
         (AnimDir + "/locomotion/animation_ybot_movement_walk_straight.fbx",   true),
         (AnimDir + "/locomotion/animation_ybot_movement_walk_turn_left.fbx",  true),
         (AnimDir + "/locomotion/animation_ybot_movement_walk_turn_right.fbx", true),
+        (AnimDir + "/locomotion/animation_ybot_movement_run_turn_left.fbx",   true),
+        (AnimDir + "/locomotion/animation_ybot_movement_run_turn_right.fbx",  true),
         (AnimDir + "/locomotion/animation_ybot_movement_run_straight.fbx",    true),
         (AnimDir + "/locomotion/animation_ybot_movement_sprint_straight.fbx", true),
         (AnimDir + "/locomotion/animation_ybot_crouch_idle.fbx",              true),
@@ -46,8 +48,14 @@ public static class PlayerAnimatorSetup
     static readonly string[] Stances = { "fists", "melee", "gun" };
     static readonly string[] AimDirs = { "idle", "forward", "backward", "left", "right" };
 
-    // El clip de giro a la derecha es el de la izquierda ESPEJADO (no hay right nativo).
-    const string MirrorClip = "animation_ybot_movement_walk_turn_right.fbx";
+    // Clips que se ESPEJAN al importar (no hay nativo del lado opuesto):
+    //  - walk_turn_right = espejo del walk_turn_left (nativo izquierda)
+    //  - run_turn_left   = espejo del run_turn_right (nativo derecha, lo agregó Carlos)
+    static readonly string[] MirrorClips =
+    {
+        "animation_ybot_movement_walk_turn_right.fbx",
+        "animation_ybot_movement_run_turn_left.fbx",
+    };
 
     [MenuItem("Necrosis/Setup animación del Jugador")]
     public static void Run()
@@ -75,7 +83,7 @@ public static class PlayerAnimatorSetup
         imp.animationType = ModelImporterAnimationType.Human;
         imp.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
 
-        bool mirror = path.EndsWith(MirrorClip);
+        bool mirror = System.Array.Exists(MirrorClips, m => path.EndsWith(m));
         if (loop.HasValue || mirror)
         {
             var clips = imp.defaultClipAnimations;
@@ -123,17 +131,19 @@ public static class PlayerAnimatorSetup
         var walkL   = LoadClip(AnimDir + "/locomotion/animation_ybot_movement_walk_turn_left.fbx");
         var walkR   = LoadClip(AnimDir + "/locomotion/animation_ybot_movement_walk_turn_right.fbx");
         var runS    = LoadClip(AnimDir + "/locomotion/animation_ybot_movement_run_straight.fbx");
+        var runL    = LoadClip(AnimDir + "/locomotion/animation_ybot_movement_run_turn_left.fbx");
+        var runR    = LoadClip(AnimDir + "/locomotion/animation_ybot_movement_run_turn_right.fbx");
         var runF    = LoadClip(AnimDir + "/locomotion/animation_ybot_movement_sprint_straight.fbx");
         tree.AddChild(idle,  new Vector2( 0f, 0f));
         tree.AddChild(walkS, new Vector2( 0f, 3.5f)); // walk (C off)
         tree.AddChild(walkL, new Vector2(-1f, 3.5f)); // giro izq caminando
         tree.AddChild(walkR, new Vector2( 1f, 3.5f)); // giro der caminando
         tree.AddChild(runS,  new Vector2( 0f, 6.5f)); // run (C on)
-        tree.AddChild(walkL, new Vector2(-1f, 6.5f)); // giro izq corriendo (reusa walk turn)
-        tree.AddChild(walkR, new Vector2( 1f, 6.5f)); // giro der corriendo
+        tree.AddChild(runL,  new Vector2(-1f, 6.5f)); // giro izq corriendo (nativo)
+        tree.AddChild(runR,  new Vector2( 1f, 6.5f)); // giro der corriendo (nativo)
         tree.AddChild(runF,  new Vector2( 0f, 8f));   // sprint (Shift)
-        tree.AddChild(walkL, new Vector2(-1f, 8f));   // giro izq esprintando
-        tree.AddChild(walkR, new Vector2( 1f, 8f));   // giro der esprintando
+        tree.AddChild(runL,  new Vector2(-1f, 8f));   // giro izq esprintando
+        tree.AddChild(runR,  new Vector2( 1f, 8f));   // giro der esprintando
         sm.defaultState = loco;
 
         // Agachado: blend por Speed (crouch_idle quieto -> crouch_walking en movimiento)

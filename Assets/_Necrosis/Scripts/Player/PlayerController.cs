@@ -51,8 +51,9 @@ public class PlayerController : MonoBehaviour
     public Stance CurrentStance { get; private set; } = Stance.Fists;
 
     [Header("Giro")]
-    [Tooltip("Velocidad angular (grados/s) que corresponde al giro completo de la animación.")]
-    public float turnRateForFullBlend = 160f;
+    [Tooltip("Velocidad angular (grados/s) que corresponde al giro completo de la animación. " +
+             "Más bajo = los giros se notan antes.")]
+    public float turnRateForFullBlend = 90f;
     float prevYaw;
 
     CharacterController controller;
