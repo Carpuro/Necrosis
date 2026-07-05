@@ -129,9 +129,12 @@ public class PlayerController : MonoBehaviour
         Aiming = Input.GetMouseButton(1) && cameraTransform != null;
         // Strafe libre AUTOMÁTICO cuando vas desarmado (puños), sin tecla: al andar
         // strafeas mirando a cámara; correr (C) o esprintar (Shift) rompen a
-        // locomoción normal de frente (para huir con giros).
+        // locomoción normal de frente. Y si vas HACIA ATRÁS, tampoco strafeas:
+        // el cuerpo se gira para caminar de frente (retroceso = giro).
+        // Apuntar (clic der.) SÍ strafea hacia atrás (backpedal).
+        bool pressingBack = v < -0.1f;
         StrafeLock = !Aiming && cameraTransform != null && CurrentStance == Stance.Fists
-                     && !sprintHeld && !runToggled;
+                     && !sprintHeld && !runToggled && !pressingBack;
         bool faceCamera = Aiming || StrafeLock;
         bool crouched = crouchToggled && !faceCamera; // al apuntar/strafear se está de pie
 
