@@ -23,11 +23,20 @@ public class PlayerSignature : MonoBehaviour
     [Tooltip("De noche, la ciudad calla y tú brillas: multiplicador nocturno")]
     public float nightEnergyMultiplier = 10f;
 
+    [Header("Visibilidad (× al alcance visual del Cazador)")]
+    [Tooltip("Estilo Project Zomboid: agacharse y quedarse quieto te hace más difícil de VER.")]
+    public float idleVisibility = 0.7f;
+    public float crouchVisibility = 0.45f;
+    public float walkVisibility = 1f;
+    public float runVisibility = 1.25f;
+
     [Header("Referencias")]
     public Light flashlight;
 
     public float NoiseRadius { get; private set; }
     public float EnergyRadius { get; private set; }
+    /// <summary>Multiplicador de "qué tan fácil es verte" según tu postura/movimiento.</summary>
+    public float VisibilityScale { get; private set; }
     public bool FlashlightOn { get; private set; }
 
     PlayerController player;
@@ -55,6 +64,16 @@ public class PlayerSignature : MonoBehaviour
             PlayerController.MoveState.Walk => walkNoise,
             PlayerController.MoveState.Run => runNoise,
             _ => idleNoise
+        };
+
+        // --- Visibilidad según postura/movimiento (el Cazador la usa para su alcance visual) ---
+        VisibilityScale = player.CurrentState switch
+        {
+            PlayerController.MoveState.Idle => idleVisibility,
+            PlayerController.MoveState.Crouch => crouchVisibility,
+            PlayerController.MoveState.Walk => walkVisibility,
+            PlayerController.MoveState.Run => runVisibility,
+            _ => walkVisibility
         };
 
         // --- Firma energética ---

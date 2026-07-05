@@ -50,9 +50,13 @@ public class DebugHUD : MonoBehaviour
         }
 
         if (signature != null)
+        {
             GUILayout.Label($"👣 Ruido: {signature.NoiseRadius:0.0}m   " +
                             $"⚡ Firma: {signature.EnergyRadius:0.0}m   " +
                             $"🔦 {(signature.FlashlightOn ? "ENCENDIDA" : "apagada")}", style);
+            GUILayout.Label($"👁 Visibilidad: {signature.VisibilityScale:0.00}×  " +
+                            "(agáchate para bajarla)", style);
+        }
 
         if (health != null)
             GUILayout.Label($"❤ Salud: {health.CurrentHealth:0}", style);
@@ -68,7 +72,12 @@ public class DebugHUD : MonoBehaviour
                 if (d < best) { best = d; nearest = h; }
             }
             if (nearest != null)
-                GUILayout.Label($"🧟 Cazador más cercano: {nearest.CurrentState} a {best:0.0}m", style);
+            {
+                string mem = nearest.RemembersPlayer
+                    ? $"· te recuerda ({nearest.MemoryAge:0.0}s)"
+                    : "· sin rastro";
+                GUILayout.Label($"🧟 Cazador más cercano: {nearest.CurrentState} a {best:0.0}m  {mem}", style);
+            }
         }
 
         GUILayout.Label("WASD mover · Shift correr · Ctrl agacharse · F linterna · H ocultar", style);

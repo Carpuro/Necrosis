@@ -54,7 +54,24 @@ public class HunterAI : MonoBehaviour
     public Transform[] patrolPoints;             // opcional; si está vacío, deambula
     public float wanderRadius = 15f;
 
+    [Header("Memoria (dejar de perseguir)")]
+    [Tooltip("Estilo Project Zomboid: al perderte de vista/oído persigue tu ÚLTIMA posición " +
+             "conocida; si no te vuelve a percibir en estos segundos, se rinde. No te sigue eterno.")]
+    public float memoryDuration = 7f;
+    [Tooltip("Cuánto rebusca en el último punto conocido antes de volver a patrullar.")]
+    public float investigateLinger = 3f;
+
     public State CurrentState { get; private set; } = State.Patrol;
+
+    // --- Memoria: dónde y cuándo percibió al jugador por última vez ---
+    Vector3 lastKnownPosition;
+    float lastPerceivedTime = -999f;
+    bool hasMemory;
+
+    /// <summary>True mientras el recuerdo del jugador sigue "fresco".</summary>
+    public bool RemembersPlayer => hasMemory && (Time.time - lastPerceivedTime) < memoryDuration;
+    /// <summary>Segundos desde la última percepción (para el HUD de debug).</summary>
+    public float MemoryAge => Time.time - lastPerceivedTime;
 
     NavMeshAgent agent;
     Transform player;
@@ -65,7 +82,6 @@ public class HunterAI : MonoBehaviour
     float stateTimer;
     float attackTimer;
     float flankSide; // +1 = derecha del jugador, -1 = izquierda; se elige al entrar en Flank
-    Vector3 investigatePoint;
     bool subscribed;
 
     void Awake()
@@ -115,9 +131,16 @@ public class HunterAI : MonoBehaviour
                 agent.isStopped = false;
                 if (player == null) { SetState(State.Patrol); break; }
                 if (PlayerVisible() || DistanceToPlayer() < visionRange * 1.5f)
-                    SetState(State.Flank); // te huele: va por ti sin haberte visto bien
+                {
+                    // Te huele: va por ti sin haberte visto bien. Sembrar la memoria
+                    // para que persiga tu posición actual y no el origen (0,0,0).
+                    RememberPlayer();
+                    SetState(State.Flank);
+                }
                 else
+                {
                     SetState(State.Patrol);
+                }
                 break;
         }
     }
@@ -153,7 +176,7 @@ public class HunterAI : MonoBehaviour
     {
         agent.speed = basePatrolSpeed * solar;
 
-        if (PlayerVisible() || HeardPlayer())
+        if (Perceive())
         {
             // Decide: flanquear (inteligente) o carga directa
             SetState(Random.value < flankChance ? State.Flank : State.Attack);
@@ -161,7 +184,7 @@ public class HunterAI : MonoBehaviour
         }
         if (DetectedPlayerEnergy())
         {
-            investigatePoint = player.position;
+            RememberPlayer();
             SetState(State.Investigate);
             return;
         }
@@ -187,57 +210,70 @@ public class HunterAI : MonoBehaviour
     void TickInvestigate(float solar)
     {
         agent.speed = baseChaseSpeed * 0.7f * solar;
-        agent.SetDestination(investigatePoint);
+        agent.SetDestination(lastKnownPosition);
 
-        if (PlayerVisible() || HeardPlayer())
+        if (Perceive())
         {
             SetState(Random.value < flankChance ? State.Flank : State.Attack);
             return;
         }
-        if (!agent.pathPending && agent.remainingDistance < 1f && stateTimer > 2f)
-            SetState(State.Patrol); // no encontró nada
+        // Llegó al último punto conocido y rebuscó un rato sin nada: se rinde.
+        if (!agent.pathPending && agent.remainingDistance < 1f && stateTimer > investigateLinger)
+        {
+            hasMemory = false;
+            SetState(State.Patrol);
+        }
     }
 
     void TickFlank(float solar)
     {
         agent.speed = baseChaseSpeed * solar;
+        bool perceived = Perceive();
 
-        // Punto de flanqueo: al costado/espalda del jugador respecto a su mirada.
-        // El costado (flankSide) se eligió UNA vez al entrar al estado; re-sortearlo
-        // cada frame hacía que el agente zigzagueara sin rodear nunca.
-        Vector3 side = player.right * flankSide;
-        Vector3 flankTarget = player.position + (side - player.forward).normalized * flankDistance;
+        if (perceived)
+        {
+            // Punto de flanqueo: al costado/espalda del jugador respecto a su mirada.
+            // El costado (flankSide) se eligió UNA vez al entrar al estado; re-sortearlo
+            // cada frame hacía que el agente zigzagueara sin rodear nunca.
+            Vector3 side = player.right * flankSide;
+            Vector3 flankTarget = player.position + (side - player.forward).normalized * flankDistance;
 
-        if (NavMesh.SamplePosition(flankTarget, out NavMeshHit hit, flankDistance, NavMesh.AllAreas))
-            agent.SetDestination(hit.position);
+            if (NavMesh.SamplePosition(flankTarget, out NavMeshHit hit, flankDistance, NavMesh.AllAreas))
+                agent.SetDestination(hit.position);
+            else
+                agent.SetDestination(player.position);
+
+            // Llegó al costado (o simplemente ya está encima): a matar
+            if (DistanceToPlayer() < attackRange * 2.2f ||
+                (!agent.pathPending && agent.remainingDistance < 1.2f))
+                SetState(State.Attack);
+        }
+        else if (RemembersPlayer)
+        {
+            // Te perdió de vista: corre a tu última posición conocida.
+            agent.SetDestination(lastKnownPosition);
+        }
         else
-            agent.SetDestination(player.position);
-
-        // Llegó al costado (o simplemente ya está encima): a matar
-        if (DistanceToPlayer() < attackRange * 2.2f ||
-            (!agent.pathPending && agent.remainingDistance < 1.2f))
-            SetState(State.Attack);
-
-        if (DistanceToPlayer() > visionRange * 1.6f)
-            SetState(State.Patrol); // lo perdió
+        {
+            SetState(State.Investigate); // memoria fría: rebusca el punto y se rinde
+        }
     }
 
     void TickAttack(float solar)
     {
         agent.speed = baseChaseSpeed * solar;
-        agent.SetDestination(player.position);
+        bool perceived = Perceive();
 
-        float d = DistanceToPlayer();
-        if (d <= attackRange && attackTimer >= attackCooldown)
+        // Mientras te perciba va a por ti; si te pierde, carga tu último punto conocido.
+        agent.SetDestination(perceived ? player.position : lastKnownPosition);
+
+        if (perceived && DistanceToPlayer() <= attackRange && attackTimer >= attackCooldown)
         {
             attackTimer = 0f;
             if (playerHealth != null) playerHealth.TakeDamage(attackDamage);
         }
-        if (d > visionRange * 1.6f && !HeardPlayer())
-        {
-            investigatePoint = player.position;
-            SetState(State.Investigate);
-        }
+        if (!perceived && !RemembersPlayer)
+            SetState(State.Investigate); // te perdió y la memoria caducó: rebusca
     }
 
     // ---------------- ESTADOS NOCTURNOS ----------------
@@ -301,11 +337,38 @@ public class HunterAI : MonoBehaviour
 
     // ---------------- PERCEPCIÓN ----------------
 
+    /// <summary>
+    /// ¿Percibe al jugador AHORA (vista, oído o contacto)? Si sí, refresca la
+    /// memoria (última posición conocida + marca de tiempo). Los estados de caza
+    /// llaman a esto: solo saben dónde estás mientras te perciben; al perderte,
+    /// van a tu último punto conocido y acaban rindiéndose (memoryDuration).
+    /// </summary>
+    bool Perceive()
+    {
+        bool contact = DistanceToPlayer() < attackRange; // encima de ti: te delata
+        if (PlayerVisible() || HeardPlayer() || contact)
+        {
+            RememberPlayer();
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>Fija la memoria en la posición actual del jugador (rastro fresco).</summary>
+    void RememberPlayer()
+    {
+        lastKnownPosition = player.position;
+        lastPerceivedTime = Time.time;
+        hasMemory = true;
+    }
+
     bool PlayerVisible()
     {
         // De noche en estatua no se usa la visión activa (sensores pasivos aparte)
         float solar = DayNightCycle.Instance.SolarFactor;
-        float effectiveRange = visionRange * Mathf.Lerp(0.5f, 1f, solar);
+        // Estilo Project Zomboid: tu postura/movimiento modula qué tan lejos te ven.
+        float visScale = playerSignature != null ? playerSignature.VisibilityScale : 1f;
+        float effectiveRange = visionRange * Mathf.Lerp(0.5f, 1f, solar) * visScale;
 
         Vector3 toPlayer = player.position - transform.position;
         if (toPlayer.magnitude > effectiveRange) return false;
