@@ -37,6 +37,12 @@ public class PlayerController : MonoBehaviour
     bool crouchToggled;
     MoveState prevState = MoveState.Idle; // para detectar el arranque idle->caminar
 
+    [Header("Arranque al caminar (estilo ARC)")]
+    [Tooltip("Duración del paso de arranque idle->caminar; el jugador NO avanza mientras dura (evita el shuffle).")]
+    public float walkStartDuration = 0.35f;
+    float walkStartTimer;
+    bool startWalkQueued;
+
     /// <summary>Velocidad horizontal real (m/s). La leen Animator y pasos.</summary>
     public float PlanarSpeed { get; private set; }
 
@@ -146,6 +152,20 @@ public class PlayerController : MonoBehaviour
         else if (runToggled) CurrentState = MoveState.Run;
         else CurrentState = MoveState.Walk;
 
+        // --- Arranque al caminar (estilo ARC): SOLO idle->caminar de frente
+        //     (no correr/esprint/strafe). Mientras dura, el jugador NO avanza:
+        //     el paso de arranque se planta sin deslizar (nada de shuffle). ---
+        if (prevState == MoveState.Idle && CurrentState == MoveState.Walk &&
+            !faceCamera && !runToggled && !sprintHeld)
+        {
+            walkStartTimer = walkStartDuration;
+            startWalkQueued = true; // dispara el trigger del Animator abajo
+        }
+        bool startingWalk = walkStartTimer > 0f;
+        if (startingWalk) walkStartTimer -= Time.deltaTime;
+        // Cancelar si dejas de moverte o cambias a correr/strafe
+        if (CurrentState != MoveState.Walk || faceCamera) { walkStartTimer = 0f; startingWalk = false; }
+
         // Altura del collider al agacharse.
         float targetHeight = crouched ? normalHeight * 0.55f : normalHeight;
         controller.height = Mathf.Lerp(controller.height, targetHeight, 10f * Time.deltaTime);
@@ -197,6 +217,9 @@ public class PlayerController : MonoBehaviour
                     rotationSmoothness * Time.deltaTime);
             }
         }
+
+        // Arranque al caminar: no avanzar mientras se planta el paso (sin shuffle).
+        if (startingWalk) { move.x = 0f; move.z = 0f; }
 
         // --- Gravedad ---
         if (controller.isGrounded && verticalVelocity < 0f) verticalVelocity = -2f;
@@ -254,10 +277,10 @@ public class PlayerController : MonoBehaviour
             animator.SetFloat("AimX", aimX, 0.1f, Time.deltaTime);
             animator.SetFloat("AimY", aimY, 0.1f, Time.deltaTime);
             AimX = aimX; AimY = aimY; // exponer para debug
-            // Arranque al caminar: sólo al pasar de parado a caminar de frente.
-            if (prevState == MoveState.Idle && CurrentState == MoveState.Walk && !faceCamera)
-                animator.SetTrigger("StartWalk");
+            // Arranque al caminar (se detectó arriba)
+            if (startWalkQueued) animator.SetTrigger("StartWalk");
         }
+        startWalkQueued = false;
         prevState = CurrentState;
     }
 
