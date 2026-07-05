@@ -225,11 +225,12 @@ public class PlayerController : MonoBehaviour
                 // persiste aunque hagas una pausa breve o el cuerpo gire hacia la
                 // cámara), no contra el facing actual. Así, si tras andar/correr
                 // pulsas la opuesta, dispara el giro aunque haya pasado un momento.
-                if (!turning180 && !startingWalk &&
+                if (!turning180 &&
                     Vector3.Angle(lastMoveDir, worldDir) > turn180Threshold)
                 {
                     turning180 = true; turn180Timer = 0f; turn180Queued = true;
-                    startWalkQueued = false; // el 180 tiene prioridad sobre el arranque
+                    // El 180 tiene prioridad sobre el arranque: cancela el walk-start.
+                    startWalkQueued = false; walkStartTimer = 0f; startingWalk = false;
                     turn180From = transform.rotation;
                     turn180To = Quaternion.LookRotation(worldDir, Vector3.up);
                 }
