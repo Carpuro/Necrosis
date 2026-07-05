@@ -34,6 +34,8 @@ public static class PlayerAnimatorSetup
         (AnimDir + "/locomotion/animation_ybot_movement_run_straight_fast.fbx", true),
         (AnimDir + "/locomotion/animation_ybot_crouch_idle.fbx",              true),
         (AnimDir + "/locomotion/animation_ybot_crouch_movement_straight.fbx", true),
+        (AnimDir + "/locomotion/animation_ybot_standing_movement_crouch.fbx", false), // entrar a agacharse
+        (AnimDir + "/locomotion/animation_ybot_crouch_movement_stand.fbx",    false), // salir de agacharse
         (AnimDir + "/melee/animation_ybot_melee_kick.fbx",                    false),
         (AnimDir + "/melee/animation_ybot_melee_swing.fbx",                   false),
         (AnimDir + "/death/animation_ybot_death_1.fbx",                       false),
@@ -127,15 +129,37 @@ public static class PlayerAnimatorSetup
         crouchTree.AddChild(LoadClip(AnimDir + "/locomotion/animation_ybot_crouch_idle.fbx"), 0f);
         crouchTree.AddChild(LoadClip(AnimDir + "/locomotion/animation_ybot_crouch_movement_straight.fbx"), 1.5f); // crouchSpeed
 
-        var toCrouch = loco.AddTransition(crouch);
-        toCrouch.AddCondition(AnimatorConditionMode.If, 0, "Crouch");
-        toCrouch.hasExitTime = false;
-        toCrouch.duration = 0.15f;
+        // Transiciones con clips dedicados: de pie -> agacharse -> (blend) -> levantarse.
+        var crouchEnter = sm.AddState("CrouchEnter");
+        crouchEnter.motion = LoadClip(AnimDir + "/locomotion/animation_ybot_standing_movement_crouch.fbx");
+        var crouchExit = sm.AddState("CrouchExit");
+        crouchExit.motion = LoadClip(AnimDir + "/locomotion/animation_ybot_crouch_movement_stand.fbx");
 
-        var fromCrouch = crouch.AddTransition(loco);
-        fromCrouch.AddCondition(AnimatorConditionMode.IfNot, 0, "Crouch");
-        fromCrouch.hasExitTime = false;
-        fromCrouch.duration = 0.15f;
+        // Locomoción --Crouch--> CrouchEnter --(al terminar)--> Crouch
+        var toEnter = loco.AddTransition(crouchEnter);
+        toEnter.AddCondition(AnimatorConditionMode.If, 0, "Crouch");
+        toEnter.hasExitTime = false;
+        toEnter.duration = 0.1f;
+        var enterToCrouch = crouchEnter.AddTransition(crouch);
+        enterToCrouch.hasExitTime = true; enterToCrouch.exitTime = 0.8f;
+        enterToCrouch.duration = 0.1f;
+        // Si suelta crouch a mitad de agacharse, vuelve a locomoción
+        var enterCancel = crouchEnter.AddTransition(loco);
+        enterCancel.AddCondition(AnimatorConditionMode.IfNot, 0, "Crouch");
+        enterCancel.hasExitTime = false; enterCancel.duration = 0.1f;
+
+        // Crouch --!Crouch--> CrouchExit --(al terminar)--> Locomoción
+        var toExit = crouch.AddTransition(crouchExit);
+        toExit.AddCondition(AnimatorConditionMode.IfNot, 0, "Crouch");
+        toExit.hasExitTime = false;
+        toExit.duration = 0.1f;
+        var exitToLoco = crouchExit.AddTransition(loco);
+        exitToLoco.hasExitTime = true; exitToLoco.exitTime = 0.8f;
+        exitToLoco.duration = 0.1f;
+        // Si vuelve a agacharse a mitad de levantarse, regresa a Crouch
+        var exitCancel = crouchExit.AddTransition(crouch);
+        exitCancel.AddCondition(AnimatorConditionMode.If, 0, "Crouch");
+        exitCancel.hasExitTime = false; exitCancel.duration = 0.1f;
 
         // Muerte: desde cualquier estado al disparar "Die" (PlayerHealth). No vuelve.
         var death = sm.AddState("Death");
