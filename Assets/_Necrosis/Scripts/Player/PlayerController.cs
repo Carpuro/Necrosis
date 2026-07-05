@@ -38,8 +38,9 @@ public class PlayerController : MonoBehaviour
     MoveState prevState = MoveState.Idle; // para detectar el arranque idle->caminar
 
     [Header("Arranque al caminar (estilo ARC)")]
-    [Tooltip("Duración del paso de arranque idle->caminar; el jugador NO avanza mientras dura (evita el shuffle).")]
-    public float walkStartDuration = 0.35f;
+    [Tooltip("Tiempo SIN avanzar al arrancar: hasta que el primer pie apoya (clip a 2x). " +
+             "Luego empieza a caminar. Ajustar para que coincida con el apoyo del pie.")]
+    public float walkStartDuration = 0.18f;
     float walkStartTimer;
     bool startWalkQueued;
 

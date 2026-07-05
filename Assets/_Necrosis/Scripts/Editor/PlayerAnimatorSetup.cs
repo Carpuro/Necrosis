@@ -231,11 +231,14 @@ public static class PlayerAnimatorSetup
         // clip de arranque y luego entra a locomoción. Trigger StartWalk.
         var walkStart = sm.AddState("WalkStart");
         walkStart.motion = LoadClip(AnimDir + "/locomotion/animation_ybot_idle_movement_walking.fbx");
+        walkStart.speed = 2f; // el doble de rápido (pedido de Carlos)
         var toWalkStart = loco.AddTransition(walkStart);
         toWalkStart.AddCondition(AnimatorConditionMode.If, 0, "StartWalk");
         toWalkStart.hasExitTime = false; toWalkStart.duration = 0.05f;
+        // Sale a locomoción tras el primer apoyo (~mitad del clip); el jugador
+        // empieza a avanzar en ese punto (ver walkStartDuration en PlayerController).
         var fromWalkStart = walkStart.AddTransition(loco);
-        fromWalkStart.hasExitTime = true; fromWalkStart.exitTime = 0.6f; fromWalkStart.duration = 0.15f;
+        fromWalkStart.hasExitTime = true; fromWalkStart.exitTime = 0.5f; fromWalkStart.duration = 0.12f;
 
         // Giro en el sitio (parado): blend 1D por TurnInPlace (izq/idle/der). Se
         // entra desde locomoción cuando TurningInPlace y sale al terminar. Visible.
