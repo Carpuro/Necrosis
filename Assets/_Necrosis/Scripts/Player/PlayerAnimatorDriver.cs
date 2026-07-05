@@ -39,8 +39,10 @@ public class PlayerAnimatorDriver : MonoBehaviour
         if (animator == null) return;
         float dt = Time.deltaTime;
 
-        // Damped so the blend eases idle→walk→run ("start then run").
-        animator.SetFloat("Speed", f.speed, 0.12f, dt);
+        // While turning in place, force Speed to 0 INSTANTLY so no walk cycle bleeds
+        // under the turn clip; otherwise damp so the blend eases idle→walk→run.
+        if (f.turningInPlace) animator.SetFloat("Speed", 0f);
+        else animator.SetFloat("Speed", f.speed, 0.12f, dt);
         animator.SetFloat("Turn", f.turn, 0.1f, dt);
         animator.SetBool("Crouch", f.crouch);
 
