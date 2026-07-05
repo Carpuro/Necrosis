@@ -35,6 +35,8 @@ public class PlayerController : MonoBehaviour
     float turn180Timer;
     Quaternion turn180From, turn180To;
     bool turn180Queued;
+    float turn180Tier;  // 0 idle, 1 caminar, 2 correr (congelado al disparar)
+    float turn180Dir;   // -1 izq, +1 der (según el lado del giro / cámara)
     Vector3 lastMoveDir = Vector3.forward; // última dirección de movimiento (persiste en pausas)
 
     [Header("Referencias")]
@@ -233,6 +235,11 @@ public class PlayerController : MonoBehaviour
                     startWalkQueued = false; walkStartTimer = 0f; startingWalk = false;
                     turn180From = transform.rotation;
                     turn180To = Quaternion.LookRotation(worldDir, Vector3.up);
+                    // Nivel por velocidad AL DISPARAR (congelado): idle/caminar/correr.
+                    turn180Tier = currentSpeed < 0.5f ? 0f
+                                : (currentSpeed < runSpeed - 1f ? 1f : 2f);
+                    // Lado del giro según la cámara/rumbo (hacia dónde inclinas el input).
+                    turn180Dir = Vector3.SignedAngle(lastMoveDir, worldDir, Vector3.up) >= 0f ? 1f : -1f;
                 }
                 lastMoveDir = worldDir; // recordar el rumbo para el próximo giro
 
@@ -279,9 +286,7 @@ public class PlayerController : MonoBehaviour
         controller.Move(move * Time.deltaTime);
 
         // Velocidad horizontal real (para Animator y pasos)
-        // Durante el giro 180 no avanzamos, pero mandamos currentSpeed para que el
-        // blend elija bien caminar/correr 180.
-        PlanarSpeed = turning180 ? currentSpeed : new Vector3(move.x, 0f, move.z).magnitude;
+        PlanarSpeed = new Vector3(move.x, 0f, move.z).magnitude;
 
         // Señal de giro: velocidad angular en yaw, normalizada a -1 (izq) .. +1 (der)
         float yaw = transform.eulerAngles.y;
@@ -332,6 +337,9 @@ public class PlayerController : MonoBehaviour
             // Arranque al caminar (se detectó arriba)
             if (startWalkQueued) animator.SetTrigger("StartWalk");
             if (turn180Queued) animator.SetTrigger("Turn180");
+            // Nivel (idle/caminar/correr) y lado (izq/der) del giro 180, congelados.
+            animator.SetFloat("Turn180Tier", turn180Tier);
+            animator.SetFloat("Turn180Dir", turn180Dir);
         }
         startWalkQueued = false;
         turn180Queued = false;

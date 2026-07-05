@@ -33,8 +33,12 @@ public static class PlayerAnimatorSetup
         (AnimDir + "/locomotion/animation_ybot_movement_walk_turn_right.fbx", true),
         (AnimDir + "/locomotion/animation_ybot_movement_run_turn_left.fbx",   true),
         (AnimDir + "/locomotion/animation_ybot_movement_run_turn_right.fbx",  true),
-        (AnimDir + "/locomotion/animation_ybot_movement_walk_turn_180.fbx",   false),
-        (AnimDir + "/locomotion/animation_ybot_movement_run_turn_180.fbx",    false),
+        (AnimDir + "/locomotion/animation_ybot_idle_movement_turn_left_180.fbx",  false),
+        (AnimDir + "/locomotion/animation_ybot_idle_movement_turn_right_180.fbx", false),
+        (AnimDir + "/locomotion/animation_ybot_movement_walk_turn_180_right.fbx", false),
+        (AnimDir + "/locomotion/animation_ybot_movement_walk_turn_180_left.fbx",  false),
+        (AnimDir + "/locomotion/animation_ybot_movement_run_turn_180_right.fbx",  false),
+        (AnimDir + "/locomotion/animation_ybot_movement_run_turn_180_left.fbx",   false),
         (AnimDir + "/locomotion/animation_ybot_turninplace_left.fbx",         true),
         (AnimDir + "/locomotion/animation_ybot_turninplace_right.fbx",        true),
         (AnimDir + "/locomotion/animation_ybot_movement_run_straight.fbx",    true),
@@ -66,6 +70,8 @@ public static class PlayerAnimatorSetup
     {
         "animation_ybot_movement_walk_turn_right.fbx",
         "animation_ybot_movement_run_turn_left.fbx",
+        "animation_ybot_movement_walk_turn_180_left.fbx",
+        "animation_ybot_movement_run_turn_180_left.fbx",
     };
 
     const string YBotModel = PlayerDir + "/Models/model_y_bot_tpose.fbx";
@@ -158,6 +164,8 @@ public static class PlayerAnimatorSetup
         controller.AddParameter("Roll", AnimatorControllerParameterType.Trigger);    // esquiva (Espacio)
         controller.AddParameter("StartWalk", AnimatorControllerParameterType.Trigger); // arranque idle->caminar
         controller.AddParameter("Turn180", AnimatorControllerParameterType.Trigger);   // giro 180 al invertir
+        controller.AddParameter("Turn180Dir", AnimatorControllerParameterType.Float);  // -1 izq / +1 der
+        controller.AddParameter("Turn180Tier", AnimatorControllerParameterType.Float); // 0 idle / 1 caminar / 2 correr
         controller.AddParameter("AimStance", AnimatorControllerParameterType.Int); // 0 puños,1 melé,2 arma
         controller.AddParameter("AimX", AnimatorControllerParameterType.Float); // strafe -1..+1
         controller.AddParameter("AimY", AnimatorControllerParameterType.Float); // atrás/adelante -1..+1
@@ -245,12 +253,17 @@ public static class PlayerAnimatorSetup
 
         // Giro 180 (al invertir el sentido de marcha): blend por Speed
         // (walk_180 lento, run_180 rápido). Trigger Turn180; vuelve al terminar.
+        // Blend 2D: X = dirección (-1 izq / +1 der), Y = nivel (0 idle / 1 caminar / 2 correr).
         var turn180 = controller.CreateBlendTreeInController("Turn180", out BlendTree t180, 0);
-        t180.blendType = BlendTreeType.Simple1D;
-        t180.blendParameter = "Speed";
-        t180.useAutomaticThresholds = false;
-        t180.AddChild(LoadClip(AnimDir + "/locomotion/animation_ybot_movement_walk_turn_180.fbx"), 0f);
-        t180.AddChild(LoadClip(AnimDir + "/locomotion/animation_ybot_movement_run_turn_180.fbx"), 5f);
+        t180.blendType = BlendTreeType.FreeformCartesian2D;
+        t180.blendParameter = "Turn180Dir";
+        t180.blendParameterY = "Turn180Tier";
+        t180.AddChild(LoadClip(AnimDir + "/locomotion/animation_ybot_idle_movement_turn_left_180.fbx"),   new Vector2(-1f, 0f));
+        t180.AddChild(LoadClip(AnimDir + "/locomotion/animation_ybot_idle_movement_turn_right_180.fbx"),  new Vector2( 1f, 0f));
+        t180.AddChild(LoadClip(AnimDir + "/locomotion/animation_ybot_movement_walk_turn_180_left.fbx"),   new Vector2(-1f, 1f));
+        t180.AddChild(LoadClip(AnimDir + "/locomotion/animation_ybot_movement_walk_turn_180_right.fbx"),  new Vector2( 1f, 1f));
+        t180.AddChild(LoadClip(AnimDir + "/locomotion/animation_ybot_movement_run_turn_180_left.fbx"),    new Vector2(-1f, 2f));
+        t180.AddChild(LoadClip(AnimDir + "/locomotion/animation_ybot_movement_run_turn_180_right.fbx"),   new Vector2( 1f, 2f));
         var toTurn180 = sm.AddAnyStateTransition(turn180);
         toTurn180.AddCondition(AnimatorConditionMode.If, 0, "Turn180");
         toTurn180.hasExitTime = false; toTurn180.duration = 0.08f; toTurn180.canTransitionToSelf = false;
