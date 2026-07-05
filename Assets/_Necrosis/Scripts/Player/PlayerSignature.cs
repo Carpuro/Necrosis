@@ -17,6 +17,7 @@ public class PlayerSignature : MonoBehaviour
     public float crouchNoise = 1.5f;
     public float walkNoise = 6f;
     public float runNoise = 14f;
+    public float sprintNoise = 20f;
 
     [Header("Firma energética (metros)")]
     public float flashlightEnergyRadius = 8f;
@@ -29,6 +30,7 @@ public class PlayerSignature : MonoBehaviour
     public float crouchVisibility = 0.45f;
     public float walkVisibility = 1f;
     public float runVisibility = 1.25f;
+    public float sprintVisibility = 1.4f;
 
     [Header("Referencias")]
     public Light flashlight;
@@ -63,6 +65,7 @@ public class PlayerSignature : MonoBehaviour
             PlayerController.MoveState.Crouch => crouchNoise,
             PlayerController.MoveState.Walk => walkNoise,
             PlayerController.MoveState.Run => runNoise,
+            PlayerController.MoveState.Sprint => sprintNoise,
             _ => idleNoise
         };
 
@@ -73,6 +76,7 @@ public class PlayerSignature : MonoBehaviour
             PlayerController.MoveState.Crouch => crouchVisibility,
             PlayerController.MoveState.Walk => walkVisibility,
             PlayerController.MoveState.Run => runVisibility,
+            PlayerController.MoveState.Sprint => sprintVisibility,
             _ => walkVisibility
         };
 

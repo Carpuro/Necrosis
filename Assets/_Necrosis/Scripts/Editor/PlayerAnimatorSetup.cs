@@ -111,14 +111,18 @@ public static class PlayerAnimatorSetup
         var walkS   = LoadClip(AnimDir + "/locomotion/animation_ybot_movement_walk_straight.fbx");
         var walkL   = LoadClip(AnimDir + "/locomotion/animation_ybot_movement_walk_turn_left.fbx");
         var walkR   = LoadClip(AnimDir + "/locomotion/animation_ybot_movement_walk_turn_right.fbx");
+        var runS    = LoadClip(AnimDir + "/locomotion/animation_ybot_movement_run_straight.fbx");
         var runF    = LoadClip(AnimDir + "/locomotion/animation_ybot_movement_run_straight_fast.fbx");
         tree.AddChild(idle,  new Vector2( 0f, 0f));
-        tree.AddChild(walkS, new Vector2( 0f, 3.5f)); // walkSpeed
+        tree.AddChild(walkS, new Vector2( 0f, 3.5f)); // walk (C off)
         tree.AddChild(walkL, new Vector2(-1f, 3.5f)); // giro izq caminando
         tree.AddChild(walkR, new Vector2( 1f, 3.5f)); // giro der caminando
-        tree.AddChild(runF,  new Vector2( 0f, 6f));   // sprint (<runSpeed 6.5)
-        tree.AddChild(walkL, new Vector2(-1f, 6f));   // giro izq corriendo (reusa walk turn)
-        tree.AddChild(walkR, new Vector2( 1f, 6f));   // giro der corriendo
+        tree.AddChild(runS,  new Vector2( 0f, 6.5f)); // run (C on)
+        tree.AddChild(walkL, new Vector2(-1f, 6.5f)); // giro izq corriendo (reusa walk turn)
+        tree.AddChild(walkR, new Vector2( 1f, 6.5f)); // giro der corriendo
+        tree.AddChild(runF,  new Vector2( 0f, 8f));   // sprint (Shift)
+        tree.AddChild(walkL, new Vector2(-1f, 8f));   // giro izq esprintando
+        tree.AddChild(walkR, new Vector2( 1f, 8f));   // giro der esprintando
         sm.defaultState = loco;
 
         // Agachado: blend por Speed (crouch_idle quieto -> crouch_walking en movimiento)

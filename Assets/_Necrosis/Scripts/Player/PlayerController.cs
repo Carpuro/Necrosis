@@ -13,6 +13,7 @@ public class PlayerController : MonoBehaviour
     public float crouchSpeed = 1.5f;
     public float walkSpeed = 3.5f;
     public float runSpeed = 6.5f;
+    public float sprintSpeed = 8f;
 
     [Header("Física")]
     public float gravity = -20f;
@@ -26,8 +27,13 @@ public class PlayerController : MonoBehaviour
              "Parámetros esperados en el Animator Controller: float 'Speed', bool 'Crouch'.")]
     public Animator animator;
 
-    public enum MoveState { Idle, Crouch, Walk, Run }
+    public enum MoveState { Idle, Crouch, Walk, Run, Sprint }
     public MoveState CurrentState { get; private set; } = MoveState.Idle;
+
+    // Toggles: C = caminar/correr, Shift = esprintar, Ctrl = agacharse
+    bool runToggled;
+    bool sprintToggled;
+    bool crouchToggled;
 
     /// <summary>Velocidad horizontal real (m/s). La leen Animator y pasos.</summary>
     public float PlanarSpeed { get; private set; }
@@ -57,25 +63,27 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        // --- Input ---
+        // --- Input (toggles) ---
         float h = Input.GetAxisRaw("Horizontal");
         float v = Input.GetAxisRaw("Vertical");
-        bool wantsRun = Input.GetKey(KeyCode.LeftShift);
-        bool wantsCrouch = Input.GetKey(KeyCode.LeftControl);
+        if (Input.GetKeyDown(KeyCode.C)) runToggled = !runToggled;             // caminar <-> correr
+        if (Input.GetKeyDown(KeyCode.LeftShift)) sprintToggled = !sprintToggled; // esprint
+        if (Input.GetKeyDown(KeyCode.LeftControl)) crouchToggled = !crouchToggled; // agacharse
 
         Vector3 inputDir = new Vector3(h, 0f, v).normalized;
         bool moving = inputDir.sqrMagnitude > 0.01f;
 
-        // --- Estado de movimiento (PlayerSignature lo lee para el ruido) ---
-        if (!moving) CurrentState = wantsCrouch ? MoveState.Crouch : MoveState.Idle;
-        else if (wantsCrouch) CurrentState = MoveState.Crouch;
-        else if (wantsRun) CurrentState = MoveState.Run;
+        // --- Estado de movimiento (prioridad: agachado > esprint > correr > caminar) ---
+        if (crouchToggled) CurrentState = MoveState.Crouch;
+        else if (!moving) CurrentState = MoveState.Idle;
+        else if (sprintToggled) CurrentState = MoveState.Sprint;
+        else if (runToggled) CurrentState = MoveState.Run;
         else CurrentState = MoveState.Walk;
 
         // Altura del collider al agacharse.
         // El centro baja la mitad de lo que baja la altura para que los pies
         // sigan en el suelo (si no, la cápsula encoge flotando alrededor del centro).
-        float targetHeight = wantsCrouch ? normalHeight * 0.55f : normalHeight;
+        float targetHeight = crouchToggled ? normalHeight * 0.55f : normalHeight;
         controller.height = Mathf.Lerp(controller.height, targetHeight, 10f * Time.deltaTime);
         Vector3 center = controller.center;
         center.y = normalCenterY - (normalHeight - controller.height) * 0.5f;
@@ -92,6 +100,7 @@ public class PlayerController : MonoBehaviour
             float speed = CurrentState switch
             {
                 MoveState.Crouch => crouchSpeed,
+                MoveState.Sprint => sprintSpeed,
                 MoveState.Run => runSpeed,
                 _ => walkSpeed
             };

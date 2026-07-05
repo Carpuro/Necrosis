@@ -58,6 +58,10 @@ public class FootstepAudio : MonoBehaviour
         float vol, pitch;
         switch (player.CurrentState)
         {
+            case PlayerController.MoveState.Sprint:
+                clip = runLoop != null ? runLoop : walkLoop;
+                vol = runVolume; pitch = runPitch * 1.15f; // esprint: pasos más rápidos
+                break;
             case PlayerController.MoveState.Run:
                 clip = runLoop != null ? runLoop : walkLoop;
                 vol = runVolume; pitch = runPitch;
