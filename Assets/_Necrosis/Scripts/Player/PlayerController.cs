@@ -176,7 +176,10 @@ public class PlayerController : MonoBehaviour
         //     mientras dura; luego la velocidad sube en rampa idle->caminar->correr. ---
         bool groundMove = CurrentState == MoveState.Walk || CurrentState == MoveState.Run ||
                           CurrentState == MoveState.Sprint;
-        if (prevState == MoveState.Idle && groundMove && !faceCamera && !crouched)
+        // Sólo arranca desde parado DE VERDAD (velocidad ~0): así una inversión o
+        // un frame suelto al girar NO dispara el ramp estando ya en movimiento.
+        if (prevState == MoveState.Idle && groundMove && !faceCamera && !crouched
+            && !turning180 && currentSpeed < 0.5f)
         {
             walkStartTimer = walkStartDuration;
             startWalkQueued = true; // dispara el trigger del Animator abajo
@@ -251,21 +254,22 @@ public class PlayerController : MonoBehaviour
                     MoveState.Run => runSpeed,
                     _ => walkSpeed
                 };
-                float rate = targetSpeed > currentSpeed ? acceleration : deceleration;
-                currentSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, rate * Time.deltaTime);
-                move = worldDir * currentSpeed;
-
                 if (turning180)
                 {
-                    // Durante el giro 180 rota el cuerpo por el clip y NO avanza.
+                    // Durante el giro 180: NO avanza y NO acelera (velocidad congelada
+                    // en 0 para que no haya deslizamiento ni tirón al terminar).
+                    currentSpeed = 0f;
+                    move = Vector3.zero;
                     turn180Timer += Time.deltaTime;
                     float t180 = Mathf.Clamp01(turn180Timer / turn180Duration);
                     transform.rotation = Quaternion.Slerp(turn180From, turn180To, t180);
-                    move.x = 0f; move.z = 0f;
                     if (t180 >= 1f) turning180 = false;
                 }
                 else
                 {
+                    float rate = targetSpeed > currentSpeed ? acceleration : deceleration;
+                    currentSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, rate * Time.deltaTime);
+                    move = worldDir * currentSpeed;
                     // Rotar el cuerpo hacia la dirección de movimiento
                     Quaternion targetRot = Quaternion.LookRotation(worldDir, Vector3.up);
                     transform.rotation = Quaternion.Slerp(transform.rotation, targetRot,
