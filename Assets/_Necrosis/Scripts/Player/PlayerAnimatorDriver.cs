@@ -62,6 +62,19 @@ public class PlayerAnimatorDriver : MonoBehaviour
         animator.SetFloat("Turn180Dir", f.turn180Dir);
     }
 
+    /// <summary>Normalized playback progress (0..1+) of the named state on layer 0,
+    /// so movement code can rotate the body in lockstep with the clip (no slide).
+    /// Returns false if no animator or that state isn't the current one.</summary>
+    public bool TryGetStateProgress(string stateName, out float t)
+    {
+        t = 0f;
+        if (animator == null) return false;
+        var s = animator.GetCurrentAnimatorStateInfo(0);
+        if (!s.IsName(stateName)) return false;
+        t = s.normalizedTime;
+        return true;
+    }
+
     /// <summary>Fires the dodge-roll animation (roll starts outside the Apply path).</summary>
     public void PlayRoll()
     {
