@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -14,6 +15,36 @@ public class PlayerAnimatorDriver : MonoBehaviour
 {
     [Tooltip("Animator of the rigged model (child). If null, nothing is driven.")]
     public Animator animator;
+
+    // ── Debug state tracking (for the on-screen HUD) ─────────────────────────
+    static readonly string[] KnownStates =
+    {
+        "Locomotion", "Crouch", "CrouchEnter", "CrouchExit", "WalkStart",
+        "TurnInPlace", "Turn180", "Aim_fists", "Aim_melee", "Aim_gun",
+        "Strafe", "Roll", "Death",
+    };
+    readonly Dictionary<int, string> stateNames = new();
+
+    /// <summary>Name of the animator state playing now (for debug HUD).</summary>
+    public string CurrentAnimState { get; private set; } = "-";
+    /// <summary>Recent state changes, newest first (for debug HUD).</summary>
+    public readonly List<string> History = new();
+
+    void Awake()
+    {
+        foreach (var s in KnownStates) stateNames[Animator.StringToHash(s)] = s;
+    }
+
+    void TrackState()
+    {
+        if (animator == null) return;
+        int hash = animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
+        string name = stateNames.TryGetValue(hash, out var n) ? n : "?";
+        if (name == CurrentAnimState) return;
+        CurrentAnimState = name;
+        History.Insert(0, name);
+        if (History.Count > 8) History.RemoveAt(History.Count - 1);
+    }
 
     /// <summary>All the values the Animator needs for one frame.</summary>
     public struct Frame
@@ -62,6 +93,8 @@ public class PlayerAnimatorDriver : MonoBehaviour
         if (f.turn180) animator.SetTrigger("Turn180");
         animator.SetFloat("Turn180Tier", f.turn180Tier);
         animator.SetFloat("Turn180Dir", f.turn180Dir);
+
+        TrackState(); // update the debug state name + history
     }
 
     /// <summary>Normalized playback progress (0..1+) of the named state on layer 0,

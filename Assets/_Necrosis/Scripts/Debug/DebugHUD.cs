@@ -16,6 +16,7 @@ public class DebugHUD : MonoBehaviour
     PlayerSignature signature;
     PlayerHealth health;
     PlayerController control;
+    PlayerAnimatorDriver animDriver;
 
     void Start()
     {
@@ -26,6 +27,7 @@ public class DebugHUD : MonoBehaviour
             signature = p.GetComponent<PlayerSignature>();
             health = p.GetComponent<PlayerHealth>();
             control = p.GetComponent<PlayerController>();
+            animDriver = p.GetComponent<PlayerAnimatorDriver>();
         }
     }
 
@@ -41,12 +43,21 @@ public class DebugHUD : MonoBehaviour
         var style = new GUIStyle(GUI.skin.label) { fontSize = 14 };
         style.normal.textColor = Color.white;
 
-        GUILayout.BeginArea(new Rect(12, 12, 460, 300), GUI.skin.box);
+        GUILayout.BeginArea(new Rect(12, 12, 460, 360), GUI.skin.box);
 
         if (control != null)
             GUILayout.Label($"🎮 {control.CurrentState} · postura {control.CurrentStance} · " +
                             $"{(control.Aiming ? "APUNTA" : control.StrafeLock ? "STRAFE" : "libre")} · " +
                             $"AimX {control.AimX:+0.0;-0.0} AimY {control.AimY:+0.0;-0.0}", style);
+
+        // Animación activa + historial (para depurar transiciones).
+        if (animDriver != null)
+        {
+            var anim = new GUIStyle(style);
+            anim.normal.textColor = new Color(0.5f, 1f, 0.6f);
+            GUILayout.Label($"🎞 Animación: {animDriver.CurrentAnimState}", anim);
+            GUILayout.Label($"   historial: {string.Join(" ← ", animDriver.History)}", style);
+        }
 
         var cycle = DayNightCycle.Instance;
         if (cycle != null)
