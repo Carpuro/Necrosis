@@ -455,6 +455,14 @@ public class PlayerController : MonoBehaviour
         frameMove = Vector3.zero;
         turn180Timer += Time.deltaTime;
 
+        // Keep steering the target toward current input (ARC-style), so facing ends
+        // aligned with movement — no post-turn re-accommodate/desync.
+        if (moving && cameraTransform != null)
+        {
+            Vector3 wd = (camForward * inV + camRight * inH).normalized;
+            if (wd.sqrMagnitude > 0.01f) turn180To = Quaternion.LookRotation(wd, Vector3.up);
+        }
+
         // Rotate in lockstep with the Turn180 clip (not a fixed timer) so the feet
         // don't slide — same fix as the discrete turn. Timer fallback during the
         // crossfade / when there's no model.
@@ -525,6 +533,15 @@ public class PlayerController : MonoBehaviour
         // Rotate the body in lockstep with the CLIP'S playback progress so the feet
         // don't slide. Fall back to a timer if the animator/state isn't available yet
         // (e.g. during the 0.1s crossfade into the turn state, or no model).
+        // Keep steering the target toward the CURRENT input (ARC-style concatenation):
+        // if you change direction mid-turn, the body ends facing where you're going,
+        // so there's no re-accommodate snap and facing never desyncs from movement.
+        if (moving && cameraTransform != null)
+        {
+            Vector3 wd = (camForward * inV + camRight * inH).normalized;
+            if (wd.sqrMagnitude > 0.01f) discreteTo = Quaternion.LookRotation(wd, Vector3.up);
+        }
+
         bool hasProgress = animDriver.TryGetStateProgress("TurnInPlace", out float p);
         float t = hasProgress ? Mathf.Clamp01(p)
                               : Mathf.Clamp01(discreteTimer / discreteDuration);
