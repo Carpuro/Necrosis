@@ -54,6 +54,11 @@ public class HunterAI : MonoBehaviour
     public Transform[] patrolPoints;             // opcional; si está vacío, deambula
     public float wanderRadius = 15f;
 
+    [Header("Animación (opcional)")]
+    [Tooltip("Animator del modelo rigged (p. ej. zombi de Mixamo). Si es null, sigue la cápsula.\n" +
+             "Parámetros esperados: float 'Speed', bool 'Statue', bool 'Attacking'.")]
+    public Animator animator;
+
     [Header("Memoria (dejar de perseguir)")]
     [Tooltip("Estilo Project Zomboid: al perderte de vista/oído persigue tu ÚLTIMA posición " +
              "conocida; si no te vuelve a percibir en estos segundos, se rinde. No te sigue eterno.")]
@@ -168,6 +173,18 @@ public class HunterAI : MonoBehaviour
             case State.Frenzy:      TickFrenzy(); break;
             case State.Exhausted:   TickExhausted(night); break;
         }
+
+        UpdateAnimator();
+    }
+
+    // Alimenta el Animator si hay un modelo rigged asignado (null-safe: sin modelo,
+    // el Cazador sigue siendo la cápsula de siempre).
+    void UpdateAnimator()
+    {
+        if (animator == null) return;
+        animator.SetFloat("Speed", agent.velocity.magnitude);
+        animator.SetBool("Statue", CurrentState == State.Statue);
+        animator.SetBool("Attacking", CurrentState == State.Attack || CurrentState == State.Frenzy);
     }
 
     // ---------------- ESTADOS DIURNOS ----------------

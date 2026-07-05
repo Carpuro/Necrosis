@@ -21,6 +21,11 @@ public class PlayerController : MonoBehaviour
     [Header("Referencias")]
     public Transform cameraTransform; // asignar la Main Camera
 
+    [Header("Animación (opcional)")]
+    [Tooltip("Animator del modelo rigged (p. ej. Mixamo). Si es null, sigue la cápsula.\n" +
+             "Parámetros esperados en el Animator Controller: float 'Speed', bool 'Crouch'.")]
+    public Animator animator;
+
     public enum MoveState { Idle, Crouch, Walk, Run }
     public MoveState CurrentState { get; private set; } = MoveState.Idle;
 
@@ -92,5 +97,13 @@ public class PlayerController : MonoBehaviour
         move.y = verticalVelocity;
 
         controller.Move(move * Time.deltaTime);
+
+        // --- Animación (opcional): alimenta el Animator si hay un modelo asignado ---
+        if (animator != null)
+        {
+            float planarSpeed = new Vector3(move.x, 0f, move.z).magnitude;
+            animator.SetFloat("Speed", planarSpeed);
+            animator.SetBool("Crouch", CurrentState == MoveState.Crouch);
+        }
     }
 }
