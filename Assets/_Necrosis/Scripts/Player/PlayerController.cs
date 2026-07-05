@@ -30,9 +30,8 @@ public class PlayerController : MonoBehaviour
     public enum MoveState { Idle, Crouch, Walk, Run, Sprint }
     public MoveState CurrentState { get; private set; } = MoveState.Idle;
 
-    // Toggles: C = caminar/correr, Shift = esprintar, Ctrl = agacharse
+    // C = caminar/correr (toggle), Ctrl = agacharse (toggle), Shift = esprintar (mantener)
     bool runToggled;
-    bool sprintToggled;
     bool crouchToggled;
 
     /// <summary>Velocidad horizontal real (m/s). La leen Animator y pasos.</summary>
@@ -66,9 +65,9 @@ public class PlayerController : MonoBehaviour
         // --- Input (toggles) ---
         float h = Input.GetAxisRaw("Horizontal");
         float v = Input.GetAxisRaw("Vertical");
-        if (Input.GetKeyDown(KeyCode.C)) runToggled = !runToggled;             // caminar <-> correr
-        if (Input.GetKeyDown(KeyCode.LeftShift)) sprintToggled = !sprintToggled; // esprint
-        if (Input.GetKeyDown(KeyCode.LeftControl)) crouchToggled = !crouchToggled; // agacharse
+        if (Input.GetKeyDown(KeyCode.C)) runToggled = !runToggled;             // caminar <-> correr (toggle)
+        if (Input.GetKeyDown(KeyCode.LeftControl)) crouchToggled = !crouchToggled; // agacharse (toggle)
+        bool sprintHeld = Input.GetKey(KeyCode.LeftShift);                     // esprint (mantener)
 
         Vector3 inputDir = new Vector3(h, 0f, v).normalized;
         bool moving = inputDir.sqrMagnitude > 0.01f;
@@ -76,7 +75,7 @@ public class PlayerController : MonoBehaviour
         // --- Estado de movimiento (prioridad: agachado > esprint > correr > caminar) ---
         if (crouchToggled) CurrentState = MoveState.Crouch;
         else if (!moving) CurrentState = MoveState.Idle;
-        else if (sprintToggled) CurrentState = MoveState.Sprint;
+        else if (sprintHeld) CurrentState = MoveState.Sprint;
         else if (runToggled) CurrentState = MoveState.Run;
         else CurrentState = MoveState.Walk;
 

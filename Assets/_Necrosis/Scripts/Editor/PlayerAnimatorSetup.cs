@@ -31,7 +31,7 @@ public static class PlayerAnimatorSetup
         (AnimDir + "/locomotion/animation_ybot_movement_walk_turn_left.fbx",  true),
         (AnimDir + "/locomotion/animation_ybot_movement_walk_turn_right.fbx", true),
         (AnimDir + "/locomotion/animation_ybot_movement_run_straight.fbx",    true),
-        (AnimDir + "/locomotion/animation_ybot_movement_run_straight_fast.fbx", true),
+        (AnimDir + "/locomotion/animation_ybot_movement_sprint_straight.fbx", true),
         (AnimDir + "/locomotion/animation_ybot_crouch_idle.fbx",              true),
         (AnimDir + "/locomotion/animation_ybot_crouch_movement_straight.fbx", true),
         (AnimDir + "/locomotion/animation_ybot_standing_movement_crouch.fbx", false), // entrar a agacharse
@@ -112,7 +112,7 @@ public static class PlayerAnimatorSetup
         var walkL   = LoadClip(AnimDir + "/locomotion/animation_ybot_movement_walk_turn_left.fbx");
         var walkR   = LoadClip(AnimDir + "/locomotion/animation_ybot_movement_walk_turn_right.fbx");
         var runS    = LoadClip(AnimDir + "/locomotion/animation_ybot_movement_run_straight.fbx");
-        var runF    = LoadClip(AnimDir + "/locomotion/animation_ybot_movement_run_straight_fast.fbx");
+        var runF    = LoadClip(AnimDir + "/locomotion/animation_ybot_movement_sprint_straight.fbx");
         tree.AddChild(idle,  new Vector2( 0f, 0f));
         tree.AddChild(walkS, new Vector2( 0f, 3.5f)); // walk (C off)
         tree.AddChild(walkL, new Vector2(-1f, 3.5f)); // giro izq caminando
