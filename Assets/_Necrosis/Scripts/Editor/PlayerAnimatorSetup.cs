@@ -19,23 +19,23 @@ public static class PlayerAnimatorSetup
 
     static readonly string[] Models =
     {
-        PlayerDir + "/model_xbot_tpose.fbx",
-        PlayerDir + "/model_ybot_tpose.fbx",
+        PlayerDir + "/x_bot.fbx",
+        PlayerDir + "/y_bot.fbx",
     };
 
     // clip -> ¿loop?
     static readonly (string file, bool loop)[] Anims =
     {
-        (AnimDir + "/idle.fbx",        true),
-        (AnimDir + "/walk.fbx",        true),
-        (AnimDir + "/run.fbx",         true),
-        (AnimDir + "/run_fast.fbx",    true),
-        (AnimDir + "/crouch_idle.fbx",    true),
-        (AnimDir + "/crouch_walking.fbx", true),
-        (AnimDir + "/melee_kick.fbx",  false),
-        (AnimDir + "/melee_swing.fbx", false),
-        (AnimDir + "/dying.fbx",       false),
-        (AnimDir + "/death.fbx",       false),
+        (AnimDir + "/idle.fbx",             true),
+        (AnimDir + "/walk_straight.fbx",    true),
+        (AnimDir + "/run_straight.fbx",     true),
+        (AnimDir + "/run_straight_fast.fbx", true),
+        (AnimDir + "/crouch_idle.fbx",      true),
+        (AnimDir + "/crouch_straight.fbx",  true),
+        (AnimDir + "/melee_kick.fbx",       false),
+        (AnimDir + "/melee_swing.fbx",      false),
+        (AnimDir + "/death_1.fbx",          false),
+        (AnimDir + "/death_2.fbx",          false),
     };
 
     [MenuItem("Necrosis/Setup animación del Jugador")]
@@ -94,8 +94,8 @@ public static class PlayerAnimatorSetup
         tree.blendParameter = "Speed";
         tree.useAutomaticThresholds = false; // respetar umbrales en m/s reales
         tree.AddChild(LoadClip(AnimDir + "/idle.fbx"), 0f);
-        tree.AddChild(LoadClip(AnimDir + "/walk.fbx"), 3.5f);  // walkSpeed
-        tree.AddChild(LoadClip(AnimDir + "/run_fast.fbx"), 6f); // sprint; < runSpeed (6.5) para alcanzarlo con amortiguado
+        tree.AddChild(LoadClip(AnimDir + "/walk_straight.fbx"), 3.5f);  // walkSpeed
+        tree.AddChild(LoadClip(AnimDir + "/run_straight_fast.fbx"), 6f); // sprint; < runSpeed (6.5) con amortiguado
         sm.defaultState = loco;
 
         // Agachado: blend por Speed (crouch_idle quieto -> crouch_walking en movimiento)
@@ -104,7 +104,7 @@ public static class PlayerAnimatorSetup
         crouchTree.blendParameter = "Speed";
         crouchTree.useAutomaticThresholds = false;
         crouchTree.AddChild(LoadClip(AnimDir + "/crouch_idle.fbx"), 0f);
-        crouchTree.AddChild(LoadClip(AnimDir + "/crouch_walking.fbx"), 1.5f); // crouchSpeed
+        crouchTree.AddChild(LoadClip(AnimDir + "/crouch_straight.fbx"), 1.5f); // crouchSpeed
 
         var toCrouch = loco.AddTransition(crouch);
         toCrouch.AddCondition(AnimatorConditionMode.If, 0, "Crouch");
@@ -118,7 +118,7 @@ public static class PlayerAnimatorSetup
 
         // Muerte: desde cualquier estado al disparar "Die" (PlayerHealth). No vuelve.
         var death = sm.AddState("Death");
-        death.motion = LoadClip(AnimDir + "/dying.fbx");
+        death.motion = LoadClip(AnimDir + "/death_2.fbx");
         var toDeath = sm.AddAnyStateTransition(death);
         toDeath.AddCondition(AnimatorConditionMode.If, 0, "Die");
         toDeath.hasExitTime = false;
