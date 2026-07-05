@@ -515,15 +515,16 @@ public class PlayerController : MonoBehaviour
         // Rotate the body in lockstep with the CLIP'S playback progress so the feet
         // don't slide. Fall back to a timer if the animator/state isn't available yet
         // (e.g. during the 0.1s crossfade into the turn state, or no model).
-        float t = animDriver.TryGetStateProgress("TurnInPlace", out float p)
-            ? Mathf.Clamp01(p)
-            : Mathf.Clamp01(discreteTimer / discreteDuration);
+        bool hasProgress = animDriver.TryGetStateProgress("TurnInPlace", out float p);
+        float t = hasProgress ? Mathf.Clamp01(p)
+                              : Mathf.Clamp01(discreteTimer / discreteDuration);
 
         transform.rotation = Quaternion.Slerp(discreteFrom, discreteTo, t);
 
-        // Done when both the clip finished and a minimum time passed (covers the
-        // crossfade where progress reads 0 for a frame or two).
-        if (t < 0.98f || discreteTimer < 0.1f) return;
+        // Stay frozen (no movement at all) until the turn clip is FULLY finished, so
+        // walking never starts before the turn ends (avoids the odd first step).
+        bool done = hasProgress ? p >= 1f : discreteTimer >= discreteDuration;
+        if (!done || discreteTimer < 0.1f) return;
         discreteTurning = false;
 
         // The turn itself never ramps. If you're STILL holding the direction when it
