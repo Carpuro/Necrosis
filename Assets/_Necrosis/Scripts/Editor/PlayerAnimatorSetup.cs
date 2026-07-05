@@ -32,6 +32,8 @@ public static class PlayerAnimatorSetup
         (AnimDir + "/locomotion/animation_ybot_movement_walk_turn_right.fbx", true),
         (AnimDir + "/locomotion/animation_ybot_movement_run_turn_left.fbx",   true),
         (AnimDir + "/locomotion/animation_ybot_movement_run_turn_right.fbx",  true),
+        (AnimDir + "/locomotion/animation_ybot_turninplace_left.fbx",         true),
+        (AnimDir + "/locomotion/animation_ybot_turninplace_right.fbx",        true),
         (AnimDir + "/locomotion/animation_ybot_movement_run_straight.fbx",    true),
         (AnimDir + "/locomotion/animation_ybot_movement_sprint_straight.fbx", true),
         (AnimDir + "/locomotion/animation_ybot_crouch_idle.fbx",              true),
@@ -113,6 +115,8 @@ public static class PlayerAnimatorSetup
         controller.AddParameter("Turn", AnimatorControllerParameterType.Float);   // -1 izq .. +1 der
         controller.AddParameter("Crouch", AnimatorControllerParameterType.Bool);
         controller.AddParameter("Die", AnimatorControllerParameterType.Trigger);
+        controller.AddParameter("TurningInPlace", AnimatorControllerParameterType.Bool);
+        controller.AddParameter("TurnInPlace", AnimatorControllerParameterType.Float); // -1 izq..+1 der
         controller.AddParameter("Aiming", AnimatorControllerParameterType.Bool);
         controller.AddParameter("AimStance", AnimatorControllerParameterType.Int); // 0 puños,1 melé,2 arma
         controller.AddParameter("AimX", AnimatorControllerParameterType.Float); // strafe -1..+1
@@ -185,6 +189,23 @@ public static class PlayerAnimatorSetup
         var exitCancel = crouchExit.AddTransition(crouch);
         exitCancel.AddCondition(AnimatorConditionMode.If, 0, "Crouch");
         exitCancel.hasExitTime = false; exitCancel.duration = 0.1f;
+
+        // Giro en el sitio (parado): blend 1D por TurnInPlace (izq/idle/der). Se
+        // entra desde locomoción cuando TurningInPlace y sale al terminar. Visible.
+        var turnIP = controller.CreateBlendTreeInController("TurnInPlace", out BlendTree tip, 0);
+        tip.blendType = BlendTreeType.Simple1D;
+        tip.blendParameter = "TurnInPlace";
+        tip.useAutomaticThresholds = false;
+        tip.AddChild(LoadClip(AnimDir + "/locomotion/animation_ybot_turninplace_left.fbx"),  -1f);
+        tip.AddChild(idle, 0f);
+        tip.AddChild(LoadClip(AnimDir + "/locomotion/animation_ybot_turninplace_right.fbx"),  1f);
+
+        var toTurnIP = loco.AddTransition(turnIP);
+        toTurnIP.AddCondition(AnimatorConditionMode.If, 0, "TurningInPlace");
+        toTurnIP.hasExitTime = false; toTurnIP.duration = 0.1f;
+        var fromTurnIP = turnIP.AddTransition(loco);
+        fromTurnIP.AddCondition(AnimatorConditionMode.IfNot, 0, "TurningInPlace");
+        fromTurnIP.hasExitTime = false; fromTurnIP.duration = 0.1f;
 
         // Apuntar/strafe (State of Decay): un blend 2D direccional POR POSTURA
         // (puños=0, melé=1, arma=2). El cuerpo mira a cámara; WASD strafea.

@@ -56,6 +56,13 @@ public class PlayerController : MonoBehaviour
     public float turnRateForFullBlend = 90f;
     float prevYaw;
 
+    [Header("Giro en el sitio (parado)")]
+    [Tooltip("Grados de diferencia con la cámara para disparar el giro en el sitio.")]
+    public float turnInPlaceThreshold = 50f;
+    [Tooltip("Velocidad de rotación (grados/s) al girar en el sitio.")]
+    public float turnInPlaceSpeed = 240f;
+    bool turningInPlace;
+
     CharacterController controller;
     float verticalVelocity;
     float normalHeight;
@@ -158,6 +165,29 @@ public class PlayerController : MonoBehaviour
         prevYaw = yaw;
         TurnSignal = Mathf.Clamp(yawRate / turnRateForFullBlend, -1f, 1f);
 
+        // --- Giro en el sitio (parado): al mirar lejos de tu eje, gira el cuerpo
+        //     hacia la cámara con animación visible, estilo tercera persona. ---
+        float turnInPlaceDir = 0f;
+        if (!Aiming && CurrentState == MoveState.Idle && cameraTransform != null)
+        {
+            Vector3 camF = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up);
+            if (camF.sqrMagnitude > 0.001f)
+            {
+                float camYaw = Quaternion.LookRotation(camF).eulerAngles.y;
+                float diff = Mathf.DeltaAngle(transform.eulerAngles.y, camYaw);
+                if (Mathf.Abs(diff) > turnInPlaceThreshold) turningInPlace = true;
+                if (turningInPlace)
+                {
+                    float step = Mathf.Clamp(diff, -turnInPlaceSpeed * Time.deltaTime,
+                                                    turnInPlaceSpeed * Time.deltaTime);
+                    transform.Rotate(0f, step, 0f);
+                    turnInPlaceDir = Mathf.Sign(diff);
+                    if (Mathf.Abs(diff) < 5f) turningInPlace = false; // ya alineado
+                }
+            }
+        }
+        else turningInPlace = false;
+
         // --- Animación (opcional): alimenta el Animator si hay un modelo asignado ---
         if (animator != null)
         {
@@ -168,6 +198,8 @@ public class PlayerController : MonoBehaviour
             animator.SetBool("Crouch", CurrentState == MoveState.Crouch);
             // Apuntar/strafe (blend 2D direccional)
             animator.SetBool("Aiming", Aiming);
+            animator.SetBool("TurningInPlace", turningInPlace);
+            animator.SetFloat("TurnInPlace", turnInPlaceDir, 0.08f, Time.deltaTime);
             animator.SetInteger("AimStance", (int)CurrentStance); // 0 puños, 1 melé, 2 arma
             animator.SetFloat("AimX", aimX, 0.1f, Time.deltaTime);
             animator.SetFloat("AimY", aimY, 0.1f, Time.deltaTime);
