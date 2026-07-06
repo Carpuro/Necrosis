@@ -40,7 +40,7 @@ de patrulla, `obstacleMask` = Default) y clip de estática placeholder
 - Proyecto Unity generado por batchmode; escena fase 0 completa (commit 6dbefc0).
 - Todo pusheado a github.com/Carpuro/necrosis (rama main).
 
-### Player locomotion + jump (2026-07-06) — UNCOMMITTED, needs a commit
+### Player locomotion + jump (2026-07-06) — committed `243a427`
 Big pass on the player controller (all English code/comments now). State machine files:
 `PlayerInput`, `PlayerController`, `PlayerAnimatorDriver`, and the editor
 `PlayerAnimatorSetup` (builds `PlayerAnimator.controller` — run menu **Necrosis > Setup
