@@ -54,6 +54,10 @@ public class PlayerController : MonoBehaviour
     public float startTurnMinAngle = 45f;
     public float startTurn90Duration = 0.4f;
     public float startTurn180Duration = 0.55f;
+    [Tooltip("Si el jugador ya frenó por debajo de esta velocidad (m/s), un giro juega " +
+             "el giro EN SITIO desde idle aunque no haya pasado el walkStartIdleDelay. " +
+             "Evita que, tras correr y detenerse, un 180 dispare el giro de CARRERA.")]
+    public float turnFromStopSpeed = 1f;
 
     [Header("180 turn (reverse direction)")]
     [Tooltip("Angle vs. last heading that triggers the 180.")]
@@ -485,8 +489,14 @@ public class PlayerController : MonoBehaviour
         if (discreteTurning) return; // already turning; HandleMovement drives it
 
         // Fresh start from a real stop, moving forward-ish input, not aiming/crouched.
+        // "Detenido de verdad" = pasó el idleDelay (parado en seco) O ya frenó por
+        // debajo de turnFromStopSpeed. Lo segundo capta el caso corres → sueltas →
+        // reviras: si ya no llevas inercia, el giro es EN SITIO (idle), no el 180 de
+        // carrera. Si reviras sin frenar, currentSpeed sigue alto y esto NO dispara,
+        // así que GroundMovement/TryTrigger180 hace el pivote de carrera (correcto).
+        bool stopped = idleTime >= walkStartIdleDelay || currentSpeed <= turnFromStopSpeed;
         bool freshStart = prevState == MoveState.Idle && moving && !faceCamera && !crouched
-                          && !turning180 && idleTime >= walkStartIdleDelay
+                          && !turning180 && stopped
                           && cameraTransform != null;
         if (!freshStart) return;
 
@@ -620,8 +630,8 @@ public class PlayerController : MonoBehaviour
             turn180 = turn180Queued,
             turn180Tier = turn180Tier,
             turn180Dir = turn180Dir,
-            // Idle 180 plays 2x faster than the 90 (4x vs 2x base).
-            turnInPlaceSpeed = Mathf.Abs(turnSelect) > 1.5f ? 4f : 2f,
+            // Idle 180 plays faster than the 90 (3x vs 2x base; 25% slower than 4x).
+            turnInPlaceSpeed = Mathf.Abs(turnSelect) > 1.5f ? 3f : 2f,
         });
     }
 
